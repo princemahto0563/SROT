@@ -1,6 +1,8 @@
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, Outlet } from "react-router-dom";
 import Shell from "./components/Shell";
 import { SessionProvider } from "./state/session";
+import { AuthProvider, ProtectedRoute } from "./state/auth";
+import Login from "./screens/Login";
 import Dashboard from "./screens/Dashboard";
 import Intake from "./screens/Intake";
 import Analysis from "./screens/Analysis";
@@ -16,12 +18,25 @@ import Audit from "./screens/Audit";
 import Packet from "./screens/Packet";
 import Benchmark from "./screens/Benchmark";
 
+function ProtectedLayout() {
+  return (
+    <ProtectedRoute>
+      <SessionProvider>
+        <Shell>
+          <Outlet />
+        </Shell>
+      </SessionProvider>
+    </ProtectedRoute>
+  );
+}
+
 export default function App() {
   return (
-    <SessionProvider>
-      <HashRouter>
-        <Shell>
-          <Routes>
+    <HashRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route element={<ProtectedLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/upload" element={<Intake />} />
             <Route path="/analysis" element={<Analysis />} />
@@ -37,9 +52,9 @@ export default function App() {
             <Route path="/audit" element={<Audit />} />
             <Route path="/packet" element={<Packet />} />
             <Route path="*" element={<Dashboard />} />
-          </Routes>
-        </Shell>
-      </HashRouter>
-    </SessionProvider>
+          </Route>
+        </Routes>
+      </AuthProvider>
+    </HashRouter>
   );
 }

@@ -342,3 +342,29 @@ class NeuralFrameResult(Base):
     preprocessing_version = Column(String)
     created_at = Column(DateTime, default=utcnow)
     error = Column(String)
+
+
+class OfficerUser(Base):
+    """Authenticated police officer / analyst account for SROT access gate."""
+    __tablename__ = "officer_users"
+    id = Column(Integer, primary_key=True)
+    badge_id = Column(String, unique=True, index=True, nullable=False)  # e.g. "DEMO-OFFICER"
+    name = Column(String, nullable=False)                               # e.g. "Insp. Vikramaditya (Cyber Ops)"
+    role = Column(String, default="Senior Forensic Investigator")
+    unit = Column(String, default="Cyber Crime Investigation Unit")
+    password_hash = Column(String, nullable=False)                      # pbkdf2$sha256$100000$salt$hash
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utcnow)
+    last_login_at = Column(DateTime, nullable=True)
+
+
+class OfficerSession(Base):
+    """Active officer session token storage."""
+    __tablename__ = "officer_sessions"
+    id = Column(Integer, primary_key=True)
+    token_hash = Column(String, unique=True, index=True, nullable=False)  # SHA-256 of session token
+    officer_id = Column(Integer, ForeignKey("officer_users.id"), index=True, nullable=False)
+    created_at = Column(DateTime, default=utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    is_revoked = Column(Boolean, default=False)
+

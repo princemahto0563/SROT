@@ -15,7 +15,8 @@ from .db import init_db, get_db, EVIDENCE_DIR, WORK_DIR, PACKET_DIR
 from .models import (
     Case, Evidence, AnalysisRun, Signal, FrameAnalysis, OriginMatch, CorpusItem,
     ExtractedEntity, RecaptureResult, StressTestRun, StressVariant, CampaignMatch,
-    AuditLog, TimelineEvent, Lead, CourtPacket, FingerprintLedger, NeuralFrameResult, utcnow,
+    AuditLog, TimelineEvent, Lead, CourtPacket, FingerprintLedger, NeuralFrameResult,
+    OfficerUser, OfficerSession, utcnow,
 )
 from .services import integrity, audit as audit_svc, casebuild, ocr as ocr_svc
 from .services import report as report_svc
@@ -28,27 +29,124 @@ from .services import cross_signal as cross_svc
 from .services import replay as replay_svc
 from .services import audio_forensics as audio_svc
 from .services import c2pa_trust as c2pa_svc
+from .services import auth as auth_svc
+from .services.auth import extract_token, validate_session_token, revoke_session_token
 from . import pipeline
 
-app = FastAPI(title="SROT — AI-Powered Media Forensics & Source Tracing", version="2.0.0")
+
+def verify_officer_access(request: Request, db: Session = Depends(get_db)):
+    """Global dependency enforcing police authentication gate on all /api/* endpoints except public ones."""
+    if request.method == "OPTIONS":
+        return None
+    path = request.url.path.rstrip("/")
+    # Public endpoints
+    if path in {"/api/health", "/api/auth/login", "/api/auth/logout", "/docs", "/redoc", "/openapi.json"} or not path.startswith("/api"):
+        return None
+
+    token = extract_token(request)
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Police authorization credentials required to access forensic repository.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    officer = validate_session_token(db, token)
+    if not officer:
+        raise HTTPException(
+            status_code=401,
+            detail="Officer session expired or invalid. Please re-authenticate.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    request.state.officer = officer
+    return officer
+
+
+app = FastAPI(
+    title="SROT — AI-Powered Media Forensics & Source Tracing",
+    version="2.0.0",
+    dependencies=[Depends(verify_officer_access)],
+)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 @app.on_event("startup")
 def _startup() -> None:
     init_db()
+    from .db import SessionLocal
+    db = SessionLocal()
+    try:
+        auth_svc.seed_demo_officer(db)
+    finally:
+        db.close()
 
 
 @app.exception_handler(Exception)
 async def _unhandled(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail}, headers=exc.headers)
     # never leak a stack trace to the client
     return JSONResponse(status_code=500,
                         content={"detail": f"Internal error ({type(exc).__name__}). "
                                            "The action was not completed."})
 
 
+
 def _iso(v: dt.datetime | None) -> str | None:
     return v.isoformat() if v else None
+
+
+# ── auth ──────────────────────────────────────────────────────────────────────
+@app.post("/api/auth/login")
+def login(payload: dict, db: Session = Depends(get_db)):
+    badge_id = (payload.get("badge_id") or "").strip()
+    password = payload.get("password") or ""
+    if not badge_id or not password:
+        raise HTTPException(status_code=401, detail="Badge ID and authorization password are required.")
+
+    officer = db.query(OfficerUser).filter(OfficerUser.badge_id == badge_id, OfficerUser.is_active == True).first()
+    if not officer or not auth_svc.verify_password(password, officer.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid officer badge ID or authorization password.")
+
+    raw_token, session = auth_svc.create_session(db, officer)
+    return {
+        "token": raw_token,
+        "officer": {
+            "badge_id": officer.badge_id,
+            "name": officer.name,
+            "role": officer.role,
+            "unit": officer.unit,
+            "last_login_at": _iso(officer.last_login_at),
+        },
+        "expires_at": _iso(session.expires_at),
+    }
+
+
+@app.post("/api/auth/logout")
+def logout(request: Request, db: Session = Depends(get_db)):
+    token = extract_token(request)
+    if token:
+        revoke_session_token(db, token)
+    return {"status": "logged_out", "message": "Officer session terminated successfully."}
+
+
+@app.get("/api/auth/session")
+def get_session_info(request: Request, db: Session = Depends(get_db)):
+    officer = getattr(request.state, "officer", None)
+    if not officer:
+        token = extract_token(request)
+        officer = validate_session_token(db, token) if token else None
+    if not officer:
+        raise HTTPException(status_code=401, detail="Not authenticated.")
+    return {
+        "authenticated": True,
+        "officer": {
+            "badge_id": officer.badge_id,
+            "name": officer.name,
+            "role": officer.role,
+            "unit": officer.unit,
+            "last_login_at": _iso(officer.last_login_at),
+        },
+    }
 
 
 # ── system ───────────────────────────────────────────────────────────────────

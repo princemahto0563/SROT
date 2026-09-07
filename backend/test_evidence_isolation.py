@@ -36,6 +36,20 @@ API = f"{BASE}/api"
 TMP = Path(tempfile.gettempdir()) / "srot_isolation_tests"
 TMP.mkdir(parents=True, exist_ok=True)
 
+# Authenticate test session for police access gate
+_session = requests.Session()
+try:
+    _login_res = _session.post(
+        f"{API}/auth/login",
+        json={"badge_id": "DEMO-OFFICER", "password": "Forensic#2026!SecOps"},
+        timeout=5,
+    )
+    if _login_res.status_code == 200:
+        _session.headers["Authorization"] = f"Bearer {_login_res.json()['token']}"
+except Exception:
+    pass
+requests = _session
+
 PASS, FAIL = [], []
 
 

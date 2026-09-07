@@ -6,6 +6,26 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export const API = "/api";
 
+const TOKEN_KEY = "srot_officer_token";
+
+export function getAuthToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token: string | null): void {
+  try {
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  } catch {}
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -16,8 +36,16 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  const reqInit = { ...init };
+  const headers = new Headers(reqInit.headers);
+  const token = getAuthToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  reqInit.headers = headers;
+
   try {
-    res = await fetch(`${API}${path}`, init);
+    res = await fetch(`${API}${path}`, reqInit);
   } catch {
     throw new ApiError(
       "Cannot reach the SROT backend. Start it with: uvicorn app.main:app --port 8077",
@@ -25,6 +53,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     );
   }
   if (!res.ok) {
+    if (res.status === 401 && path !== "/auth/login") {
+      window.dispatchEvent(new CustomEvent("srot:unauthorized"));
+    }
     let detail = `Request failed (HTTP ${res.status})`;
     try {
       const body = await res.json();

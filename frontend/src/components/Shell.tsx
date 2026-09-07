@@ -4,9 +4,10 @@ import type { ReactNode } from "react";
 import {
   LayoutDashboard, Upload, ScanSearch, GitBranch, ScanFace, Type, Share2,
   Layers, Activity, Clock, ShieldCheck, FileText, Circle, WifiOff, Cpu,
-  FolderPlus, Plus, BarChart3,
+  FolderPlus, Plus, BarChart3, LogOut,
 } from "lucide-react";
 import { useSession } from "../state/session";
+import { useAuth } from "../state/auth";
 import { Boundary } from "./Boundary";
 
 const NAV = [
@@ -28,6 +29,7 @@ const NAV = [
 
 export default function Shell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
+  const { officer, logout } = useAuth();
   const { health, healthError, cases, detail, caseRef, setCaseRef, createNewCase, evidence, evidenceRef, setEvidenceRef } = useSession();
   const [showNewCase, setShowNewCase] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -209,6 +211,29 @@ export default function Shell({ children }: { children: ReactNode }) {
                 offline
               </span>
             )}
+          </div>
+        </div>
+
+        {/* Officer Session & Logout Gate */}
+        <div className="border-t border-line px-4 py-2.5 bg-s2/40">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
+                <ShieldCheck size={12} className="text-accent shrink-0" />
+                <span className="truncate font-mono">{officer?.badge_id ?? "DEMO-OFFICER"}</span>
+              </div>
+              <div className="truncate text-[10px] text-muted leading-tight" title={officer?.name ?? "Forensic Investigator"}>
+                {officer?.name ?? "Forensic Investigator"}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="flex items-center gap-1 rounded border border-line px-2 py-1 text-[10.5px] font-medium text-ink2 hover:bg-s3 hover:text-danger hover:border-danger/40 transition-colors shrink-0"
+              title="Terminate officer session and lock forensic console"
+            >
+              <LogOut size={11} /> Logout
+            </button>
           </div>
         </div>
       </aside>

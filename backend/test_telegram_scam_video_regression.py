@@ -19,6 +19,20 @@ import requests
 BASE = os.environ.get("SROT_API", "http://127.0.0.1:8077")
 API = f"{BASE}/api"
 
+# Authenticate test session for police access gate
+_session = requests.Session()
+try:
+    _login_res = _session.post(
+        f"{API}/auth/login",
+        json={"badge_id": "DEMO-OFFICER", "password": "Forensic#2026!SecOps"},
+        timeout=5,
+    )
+    if _login_res.status_code == 200:
+        _session.headers["Authorization"] = f"Bearer {_login_res.json()['token']}"
+except Exception:
+    pass
+requests = _session
+
 SAMPLE_FILE = Path("/Users/princemahto/Downloads/SROT/data/evidence/CASE-2026-024/EV-CASE-2026-024-003__Telegram_Video_2026-09-04_AITradingBot_SCAM_DEMO.mp4")
 if not SAMPLE_FILE.is_file():
     # Fallback to alternate copy if present
