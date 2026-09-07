@@ -140,13 +140,13 @@ function NeuralBody({ evidenceRef }: { evidenceRef: string }) {
                 <div className="mb-3 rounded-lg border border-line bg-s2/60 p-3">
                   <div className="text-xs font-semibold text-muted uppercase tracking-wider">Model Headline Metric</div>
                   <div className="text-lg font-bold text-ink mt-0.5">
-                    Model AI-synthetic score:{" "}
+                    AI-synthetic model score:{" "}
                     <span className={scoreTone(d.aggregate?.median_score ?? null) === "danger" ? "text-danger" : scoreTone(d.aggregate?.median_score ?? null) === "amber" ? "text-amber" : "text-accent"}>
-                      {d.aggregate?.median_score != null ? `${(d.aggregate.median_score * 100).toFixed(1)}%` : "—"}
+                      {d.aggregate?.median_score != null ? `${(d.aggregate.median_score * 100).toFixed(1)} / 100` : "—"}
                     </span>
                   </div>
                   <p className="text-xs text-muted mt-1">
-                    Assessment: {d.aggregate?.assessment_text || "Model indicates a decision-support synthetic-image signal."}
+                    Model score, not a calibrated probability. Assessment: {d.aggregate?.assessment_text || "Model indicates a decision-support synthetic-image signal."}
                   </p>
                 </div>
 
@@ -155,20 +155,20 @@ function NeuralBody({ evidenceRef }: { evidenceRef: string }) {
                     <Meter value={(d.aggregate?.median_score ?? 0) * 100}
                            tone={scoreTone(d.aggregate?.median_score ?? null)} />
                     <span className="text-sm text-zinc-400">
-                      {d.aggregate?.median_score != null ? `${(d.aggregate.median_score * 100).toFixed(1)}%` : "—"}
+                      {d.aggregate?.median_score != null ? `${(d.aggregate.median_score * 100).toFixed(1)} / 100` : "—"}
                     </span>
                   </Field>
                   <Field label="Mean score">
                     <span className="text-sm">
-                      {d.aggregate?.mean_score != null ? `${(d.aggregate.mean_score * 100).toFixed(1)}%` : "—"}
+                      {d.aggregate?.mean_score != null ? `${(d.aggregate.mean_score * 100).toFixed(1)} / 100` : "—"}
                     </span>
                   </Field>
                   <Field label="Max frame score">
                     <span className="text-sm">
-                      {d.aggregate?.max_score != null ? `${(d.aggregate.max_score * 100).toFixed(1)}%` : "—"}
+                      {d.aggregate?.max_score != null ? `${(d.aggregate.max_score * 100).toFixed(1)} / 100` : "—"}
                     </span>
                   </Field>
-                  <Field label="Suspicious frames (≥60%)">
+                  <Field label="Suspicious frames (score ≥ 60 / 100)">
                     <span className="text-sm">
                       {d.aggregate?.suspicious_frames ?? 0} / {d.frames_analysed}
                     </span>
@@ -216,7 +216,7 @@ function NeuralBody({ evidenceRef }: { evidenceRef: string }) {
 
             {/* Frame-level results table */}
             <Panel title="Frame-level synthetic-image scores" hint="Each sampled frame is evaluated individually by the Vision Transformer without temporal smoothing.">
-              <Table head={["Frame", "Timestamp", "Model score", "Verdict label", "Raw output probabilities", "Inference time"]}>
+              <Table head={["Frame", "Timestamp", "Model score", "Verdict label", "Raw model outputs", "Inference time"]}>
                 {d.frame_results.map((fr) => (
                   <Row key={fr.frame_index}>
                     <Cell>
@@ -230,7 +230,7 @@ function NeuralBody({ evidenceRef }: { evidenceRef: string }) {
                       {fr.score != null ? (
                         <span className="flex items-center gap-2">
                           <Meter value={fr.score * 100} tone={scoreTone(fr.score)} />
-                          <span className="text-sm font-mono font-medium">{(fr.score * 100).toFixed(1)}%</span>
+                          <span className="text-sm font-mono font-medium">{(fr.score * 100).toFixed(1)} / 100</span>
                         </span>
                       ) : fr.error ? (
                         <span className="text-red-400 text-xs">{fr.error}</span>
@@ -242,7 +242,7 @@ function NeuralBody({ evidenceRef }: { evidenceRef: string }) {
                     <Cell>
                       <span className="text-xs text-zinc-400 font-mono">
                         {Object.entries(fr.raw_output || {}).map(([k, v]) =>
-                          `${k}: ${(v * 100).toFixed(1)}%`
+                          `${k}: ${(v * 100).toFixed(1)} / 100`
                         ).join(", ")}
                       </span>
                     </Cell>

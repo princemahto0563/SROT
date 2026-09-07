@@ -471,14 +471,30 @@ def run_stress(evidence_id: int, stress_id: int) -> None:
             processing_ms=v.get("processing_ms"), error=v.get("error")) for v in res["variants"]])
         st.reliability_boundary = res["reliability_boundary"]
         st.recommendation = res["recommendation"]
-        st.status = "completed"; st.finished_at = utcnow()
-        db.add(st); db.commit()
+        st.status = "completed"
+        st.finished_at = utcnow()
+        db.add(st)
+        db.commit()
+        db.refresh(st)
 
-        audit.record(db, case_id=case.id,
-                     action=f"Laundering stress test completed — {len(res['variants'])} variants generated and re-analysed",
-                     component="stress test (FFmpeg + signal ensemble)",
-                     evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
-                     payload={"baseline": baseline, "boundary": res["reliability_boundary"]})
+        # Audit entry must obtain status, variant count, scored count, and run identifier
+        # from the exact same stress-test database record that the live API and screen reads.
+        if st.status == "completed":
+            db_variants = db.query(StressVariant).filter(StressVariant.stress_id == st.id).all()
+            variant_count = len(db_variants)
+            scored_variant_count = len([v for v in db_variants if v.score is not None and v.error is None])
+            audit.record(db, case_id=case.id,
+                         action=f"Laundering stress test completed — {variant_count} variants generated and re-analysed",
+                         component="stress test (FFmpeg + signal ensemble)",
+                         evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                         payload={
+                             "stress_id": st.id,
+                             "status": st.status,
+                             "variant_count": variant_count,
+                             "scored_variant_count": scored_variant_count,
+                             "baseline": st.baseline_score,
+                             "boundary": st.reliability_boundary,
+                         })
     except Exception as e:  # noqa: BLE001
         _fail(StressTestRun, stress_id, e)
     finally:

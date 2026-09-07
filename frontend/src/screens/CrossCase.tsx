@@ -32,9 +32,7 @@ export default function CrossCase() {
       <PageHead
         eyebrow="Step 7 · Cross-case linking"
         title="Has this media appeared in another case?"
-        sub="Every fingerprint SROT ingests is added to a department-level ledger. A new upload is
-             compared against the fingerprints of other cases before its own rows are written, so a
-             case can never match itself."
+        sub="SROT maintains a department ledger of similarity fingerprints (perceptual hashes). Each new upload is checked against existing fingerprints from other cases before being stored, so a case can never match itself."
       />
 
       <Async state={c} rows={4}>
@@ -44,7 +42,7 @@ export default function CrossCase() {
               <Stat label="Potential campaign links" value={String(d.count)}
                     sub="other cases with highly similar media" />
               <Stat label="Fingerprint ledger" value={String(d.ledger_entries)}
-                    sub="perceptual hashes across all cases" />
+                    sub="similarity fingerprints across all cases" />
               <Stat label="Current case" value={caseRef ?? "—"} sub="compared against all others" />
               <Stat label="Selected evidence" value={evidenceRef ?? "All"} sub={filterByEvidence ? "filtered" : "all items in case"} />
             </div>
@@ -72,7 +70,7 @@ export default function CrossCase() {
             )}
 
             <Panel title="Matches in other cases"
-                   hint="Similarity is computed from multi-view perceptual hashes (Hamming distance on frame views).">
+                   hint="Similarity is computed from multi-view similarity fingerprints (Hamming distance on perceptual hash frame views).">
               {d.matches.length === 0 ? (
                 <EmptyState
                   title="No qualifying cross-case match found."
@@ -80,7 +78,7 @@ export default function CrossCase() {
                     "No other case in the ledger contains media similar enough to meet the matching threshold."}
                 />
               ) : (
-                <Table head={["Current evidence", "Other case", "Other evidence", "Directly observed", "Hamming distance", "Inference classification", "Recorded"]}>
+                <Table head={["Current evidence", "Other case", "Other evidence", "Similarity", "Hamming distance", "Inference classification", "Recorded"]}>
                   {d.matches.map((m, i) => (
                     <Row key={`${m.other_case_ref}-${m.other_evidence_ref}-${i}`}>
                       <Cell mono className="text-accent">{m.evidence_ref || evidenceRef || "Current"}</Cell>
@@ -109,13 +107,13 @@ export default function CrossCase() {
               <div className="rounded-lg border border-ok/30 bg-ok/[0.04] p-3.5 text-[11.5px]">
                 <div className="font-semibold text-ok mb-1">DIRECTLY OBSERVED EVIDENCE</div>
                 <p className="text-muted leading-relaxed">
-                  Perceptual hash distance (multi-view pHash) is an empirical mathematical measurement of pixel structure similarity between extracted frames.
+                  Mathematical similarity of perceptual hash values (multi-view pHash Hamming distance). Directly measured from pixel structure.
                 </p>
               </div>
               <div className="rounded-lg border border-accent/30 bg-accent/[0.04] p-3.5 text-[11.5px]">
                 <div className="font-semibold text-accent mb-1">INFERRED HYPOTHESIS</div>
                 <p className="text-muted leading-relaxed">
-                  A cross-case match represents a candidate syndicated campaign relationship warranting joint review. It does <strong>not</strong> prove identical person, group, or physical capture device.
+                  A shared campaign or syndication hypothesis requiring examiner follow-up. This does <strong>not</strong> prove identical person, group, or physical capture device.
                 </p>
               </div>
             </div>
@@ -128,7 +126,7 @@ export default function CrossCase() {
 
             <div className="mt-4">
               <Notice kind="info">
-                Forensic Safety Standard: Visual similarity between media items in separate cases indicates potential media reuse or syndication. It must never be represented as legal proof of identical author or operator identity without independent corroborating evidence.
+                Visual similarity between media items in separate cases indicates potential media reuse or syndication. It is an investigative lead and must not be represented as proof of identical author or operator identity without independent corroborating evidence.
               </Notice>
             </div>
           </>

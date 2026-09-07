@@ -19,7 +19,7 @@ const NAV = [
   { to: "/entities",   label: "OCR & Identifiers",     Icon: Type },
   { to: "/graph",      label: "Investigation Graph",   Icon: Share2 },
   { to: "/cross-case", label: "Cross-Case Links",      Icon: Layers },
-  { to: "/stress",     label: "Laundering Stress Test",Icon: Activity },
+  { to: "/stress",     label: "Laundering Stress Test", Icon: Activity },
   { to: "/timeline",   label: "Timeline & Leads",      Icon: Clock },
   { to: "/benchmark",  label: "Adversarial Benchmark", Icon: BarChart3 },
   { to: "/audit",      label: "Audit Trail",           Icon: ShieldCheck },
@@ -214,7 +214,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       </aside>
 
       <main key={pathname} className="fade-in flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[1180px] px-8 py-7">
+        <div className="mx-auto max-w-[1380px] px-6 py-6 lg:px-8">
           <Boundary where={pathname}>{children}</Boundary>
         </div>
       </main>

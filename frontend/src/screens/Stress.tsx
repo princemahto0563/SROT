@@ -42,10 +42,8 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
     <>
       <PageHead
         eyebrow="Step 8 · Laundering stress test"
-        title="Where does this assessment stop being reliable?"
-        sub="SROT re-encodes, rescales, crops, mirrors and overlays the evidence with FFmpeg, then
-             re-scores every variant through the identical analysis path — so the degradation curve
-             compares like with like."
+        title="When should this result be treated with caution?"
+        sub="Checks whether the assessment remains stable after common media transformations such as resizing, compression, cropping, screenshots, and re-encoding. Media laundering: processing or re-encoding media in ways that can weaken or alter forensic traces."
         right={
           <Button onClick={start} disabled={starting || running}>
             {starting || running
@@ -67,9 +65,9 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
           if (d.status === "none" || (!vs.length && !running)) {
             return (
               <EmptyState
-                title="No laundering stress test has been executed for this evidence."
+                title="No stress test has been executed for this evidence."
                 detail={d.empty_reason ??
-                  "Run the test to measure how far the assessment survives the transformations media actually undergoes when it is re-shared."}
+                  "Run the stress test to measure whether the assessment remains stable after common media transformations such as resizing, compression, cropping, and re-encoding."}
                 action={<Button onClick={start} disabled={starting}>Run stress test</Button>}
               />
             );

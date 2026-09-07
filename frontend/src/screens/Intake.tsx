@@ -245,7 +245,7 @@ function EvidenceViewer({ evidence, run }: { evidence: Evidence; run: RunSummary
           <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 md:grid-cols-3">
             <Field label="Media kind">{ev.media_kind}</Field>
             <Field label="Container">{ev.container_format}</Field>
-            <Field label="Resolution">
+            <Field label="Source resolution">
               {ev.width && ev.height ? `${ev.width} × ${ev.height}` : null}
             </Field>
             <Field label="Duration">

@@ -117,6 +117,9 @@ def rebuild_graph(db: Session, case: Case, ev: Evidence, run: AnalysisRun) -> di
     for e in ents:
         kind = ENTITY_KIND.get(e.entity_type, "identifier")
         ekey = f"ent:{e.entity_type}:{e.value.lower()}"
+        f_num = f"frame {e.frame_number}" if e.frame_number is not None else f"frame {e.frame_index}"
+        ts_str = f", {e.timestamp_s:.1f} s" if e.timestamp_s is not None else ""
+        conf_detail = f" — {e.ocr_confidence:.0f}% OCR confidence ({f_num}{ts_str})" if e.ocr_confidence is not None else f" ({f_num}{ts_str})"
         node(ekey, kind, e.value, e.entity_type.title(),
              source_evidence_id=ev.id, frame_number=e.frame_number,
              extraction_method=e.method, confidence=(e.ocr_confidence or 0) / 100.0,
@@ -124,8 +127,7 @@ def rebuild_graph(db: Session, case: Case, ev: Evidence, run: AnalysisRun) -> di
                          "ocr_confidence": e.ocr_confidence, "region": e.region,
                          "frame_index": e.frame_index, "timestamp_s": e.timestamp_s})
         edge(f"ocr:{ev.evidence_ref}:{e.frame_index}", ekey, "identifier parsed",
-             f"'{e.value}' matched the {e.entity_type} pattern in OCR output "
-             f"(OCR confidence {e.ocr_confidence}).",
+             f"'{e.value}' matched {e.entity_type} pattern via OCR{conf_detail}.",
              confidence=(e.ocr_confidence or 0) / 100.0)
 
     # near-duplicate copies located in the corpus
@@ -313,39 +315,41 @@ def rebuild_leads(db: Session, case: Case, ev: Evidence, run: AnalysisRun) -> in
           .filter(RecaptureResult.evidence_id == ev.id, RecaptureResult.run_id == run.id).first())
     if rc and rc.recovered_handles_json:
         h = rc.recovered_handles_json[0]
+        h_fi = h.get("frame_index")
+        h_conf = h.get("confidence")
+        f_str = f"frame {h_fi}" if h_fi is not None else "media frame"
+        conf_str = f" — {h_conf}% OCR confidence ({f_str})" if h_conf is not None else f" ({f_str})"
         candidates.append({
             "weight": 95, "priority": "HIGH",
-            "title": f"Verify recovered interface handle: {h['handle']}",
-            "summary": "A candidate source handle was read by OCR from an interface region of the "
-                       "media itself — it survived metadata removal because it is in the pixels.",
+            "title": f"Verify recovered interface handle: {h['handle']}{conf_str}",
+            "summary": f"A candidate source handle was read by OCR from an interface region of {f_str} — it survived metadata removal because it is in the pixels.",
             "reasons": [
+                {"text": "Source frame", "value": f_str},
                 {"text": "Recovered from region", "value": h.get("region", "unknown")},
-                {"text": "Sampled frame index", "value": str(h.get("frame_index"))},
-                {"text": "OCR confidence", "value": str(h.get("confidence"))},
-                {"text": "Recapture likelihood for this evidence", "value": rc.likelihood},
+                {"text": "OCR confidence", "value": f"{h_conf}%" if h_conf is not None else "n/a"},
+                {"text": "Recapture indication for this evidence", "value": rc.likelihood},
             ],
-            "limitation": "OCR output requires human verification. A handle is an account label, "
-                          "not an identified person."})
+            "limitation": "OCR output requires human verification. A handle is an account label, not an identified person."})
 
     for ent in (db.query(ExtractedEntity)
                 .filter(ExtractedEntity.evidence_id == ev.id, ExtractedEntity.run_id == run.id,
                         ExtractedEntity.entity_type.in_(("UPI", "WALLET", "PHONE", "URL"))).all()):
+        f_num = f"frame {ent.frame_number}" if ent.frame_number is not None else f"frame {ent.frame_index}"
+        ts_str = f", {ent.timestamp_s:.1f} s" if ent.timestamp_s is not None else ""
+        conf_str = f" — {ent.ocr_confidence:.0f}% OCR confidence ({f_num}{ts_str})" if ent.ocr_confidence is not None else f" ({f_num}{ts_str})"
         candidates.append({
             "weight": 60 + (ent.ocr_confidence or 0) / 5,
             "priority": "MEDIUM",
-            "title": f"Examine media-derived {ent.entity_type.lower()}: {ent.value}",
-            "summary": "Identifier read directly out of the media by OCR — it exists in this case "
-                       "only because it was visible in a frame.",
+            "title": f"Examine media-derived {ent.entity_type.lower()}: {ent.value}{conf_str}",
+            "summary": f"Identifier read directly out of the media by OCR from {f_num}{ts_str} — it exists in this case only because it was visible in that frame.",
             "reasons": [
-                {"text": "Source frame", "value": (f"frame {ent.frame_number}" if ent.frame_number is not None
-                                                   else f"sample #{ent.frame_index}")},
+                {"text": "Source frame", "value": f_num},
                 {"text": "Timestamp in media", "value": (f"{ent.timestamp_s:.2f}s" if ent.timestamp_s is not None else "n/a")},
                 {"text": "Bounding box (x,y,w,h)", "value": str(ent.bbox_json)},
-                {"text": "OCR confidence", "value": str(ent.ocr_confidence)},
+                {"text": "OCR confidence", "value": f"{ent.ocr_confidence:.1f}%" if ent.ocr_confidence is not None else "n/a"},
                 {"text": "Script detected", "value": ent.language or "unknown"},
             ],
-            "limitation": "SROT does not resolve ownership of any identifier. That requires "
-                          "authorised legal process."})
+            "limitation": "SROT does not resolve ownership of any identifier. That requires authorised legal process."})
 
     cm = db.query(CampaignMatch).filter(CampaignMatch.case_id == case.id,
                                         CampaignMatch.evidence_id == ev.id).all()

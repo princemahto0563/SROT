@@ -40,22 +40,24 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
           return (
             <>
               <div className="mb-4 grid gap-4 lg:grid-cols-[1fr_1.2fr]">
-                <Panel title="Recapture likelihood">
+                <Panel title="Recapture indication"
+                       hint="Visual characteristics commonly associated with recording a display were detected.">
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-[26px] font-bold leading-none text-ink">{d.likelihood}</span>
-                    <Chip tone={tone(d.likelihood)}>{fmtNum(d.score, 1)} / 100</Chip>
+                    <span className="text-[22px] font-bold leading-none text-ink">
+                      Recapture Indication: {d.likelihood}
+                    </span>
+                    <Chip tone={tone(d.likelihood)}>Recapture Score: {fmtNum(d.score, 1)} / 100</Chip>
                   </div>
                   <div className="mt-3.5">
                     <Meter value={d.score ?? 0} tone={tone(d.likelihood)} />
                   </div>
                   <div className="mt-4 grid grid-cols-1 gap-3.5">
                     <Field label="Metadata">{d.metadata_status}</Field>
-                    <Field label="Provenance">{d.provenance_status}</Field>
+                    <Field label="Available File History / Provenance">{d.provenance_status}</Field>
                   </div>
                   <div className="mt-4">
                     <Notice kind="info">
-                      Recapture indicators describe how a copy was produced. They say nothing about
-                      whether the underlying content is authentic.
+                      Visual characteristics commonly associated with recording a display were detected. Recapture indicators describe physical playback and recording traces; they do not by themselves indicate malicious content manipulation.
                     </Notice>
                   </div>
                 </Panel>

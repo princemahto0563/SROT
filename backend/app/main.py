@@ -1046,7 +1046,7 @@ def case_audit(case_ref: str, db: Session = Depends(get_db)):
                          "evidence_ref": r.evidence_ref, "evidence_hash": r.evidence_hash,
                          "prev_hash": r.prev_hash, "current_hash": r.current_hash,
                          "payload": r.payload_json} for r in rows],
-            "disclaimer": "Prototype audit trail — not a claim of automatic legal admissibility."}
+            "disclaimer": "Structured audit trail for examiner review. A valid SHA-256 hash confirms byte-level integrity, but does not by itself establish legal admissibility or authenticity."}
 
 
 # ── hash verification ────────────────────────────────────────────────────────

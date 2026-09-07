@@ -19,15 +19,13 @@ export default function Timeline() {
     <>
       <PageHead
         eyebrow="Step 9 · Timeline &amp; leads"
-        title="What happened, in order — and what to do next"
-        sub="The timeline mixes observations recorded about the media with actions SROT performed.
-             Leads are ranked from those findings and each one cites what produced it."
+        title="Chronological Observations and Suggested Leads"
+        sub="The timeline records chronological observations and forensic actions. Leads are suggested starting points derived deterministically from evidence findings."
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1.15fr]">
+      <div className="grid gap-5 lg:grid-cols-[380px_1fr] xl:grid-cols-[400px_1fr]">
         <Panel title="Case timeline"
-               hint="Corpus observation times are properties of the reference corpus, not proof of
-                     publication order anywhere else.">
+               hint="Corpus observation times are properties of the searched reference corpus, not proof of publication order elsewhere.">
           <Async state={t} rows={4}>
             {(rows) => rows.length === 0 ? (
               <EmptyState title="No timeline events."
@@ -61,8 +59,7 @@ export default function Timeline() {
         </Panel>
 
         <Panel title="Suggested investigative leads"
-               hint="Ranked deterministically from the findings above. Nothing here is a directive — each
-                     lead states the limitation that applies to it.">
+               hint="Ranked deterministically from findings. Each lead states the limitation that applies to it.">
           <Async state={l} rows={4}>
             {(rows) => rows.length === 0 ? (
               <EmptyState title="No leads generated."
@@ -112,8 +109,8 @@ export default function Timeline() {
 
       <div className="mt-4">
         <Notice kind="warn">
-          Suggested investigative leads are starting points for a human investigator. SROT does not
-          identify persons, resolve who owns an identifier, or recommend any enforcement action.
+          Suggested investigative leads are starting points for an examiner. SROT does not
+          identify individuals, determine identifier ownership, or recommend enforcement actions.
         </Notice>
       </div>
     </>

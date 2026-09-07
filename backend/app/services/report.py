@@ -456,7 +456,7 @@ Generated {{ generated_at|f }}</div></div>
 <h2>3. Container &amp; provenance</h2>
 <table class="kv">
 <tr><td>Media kind</td><td>{{ evidence.media_kind }}</td></tr>
-<tr><td>Resolution</td><td>{% if evidence.width %}{{ evidence.width }}×{{ evidence.height }}{% else %}{{ na }}{% endif %}</td></tr>
+<tr><td>Source resolution</td><td>{% if evidence.width %}{{ evidence.width }}×{{ evidence.height }}{% else %}{{ na }}{% endif %}</td></tr>
 <tr><td>Duration</td><td>{% if evidence.duration_s %}{{ '%.2f'|format(evidence.duration_s) }} s{% else %}{{ na }}{% endif %}</td></tr>
 <tr><td>Frame rate</td><td>{{ evidence.fps|f }}</td></tr>
 <tr><td>Video / audio codec</td><td>{{ evidence.video_codec|f }} / {{ evidence.audio_codec|f }}</td></tr>
@@ -659,7 +659,8 @@ Unit {{ case.unit }} · Generated {{ generated_at|f }} ·
 
 <h2>3. Media analysis &amp; quality gating</h2>
 <table class="kv">
-<tr><td>Resolution</td><td>{% if evidence.width %}{{ evidence.width }}×{{ evidence.height }}{% else %}{{ na }}{% endif %}</td></tr>
+<tr><td>Source resolution</td><td>{% if evidence.width %}{{ evidence.width }}×{{ evidence.height }}{% else %}{{ na }}{% endif %}</td></tr>
+<tr><td>Analysis frame resolution</td><td>{% if quality_gate.metrics.width %}{{ quality_gate.metrics.width }}×{{ quality_gate.metrics.height }}{% else %}{{ na }}{% endif %}</td></tr>
 <tr><td>Duration</td><td>{% if evidence.duration_s %}{{ '%.2f'|format(evidence.duration_s) }} s{% else %}{{ na }}{% endif %}</td></tr>
 <tr><td>Frame rate</td><td>{{ evidence.fps|f }}</td></tr>
 <tr><td>Frames sampled for analysis</td><td>{{ run.frames_sampled if run else na }}</td></tr>
@@ -823,13 +824,13 @@ of {{ run.confidence_band }}{% endif %}.
 The strongest supporting signals are
 {% for s in signals %}{% if s.score is not none and s.score >= 45 %}{{ s.name }}{{ ", " }}{% endif %}{% endfor %}
 as measured above.
-{% if earliest %}The earliest known related copy identified in the searched corpus is
+{% if earliest %}The oldest matching copy identified in the searched reference corpus is
 {{ earliest.corpus.label }}, observed {{ earliest.corpus.observed_at|f }} at
 {{ '%.2f'|format(earliest.match.similarity) }}% perceptual similarity.
-{% else %}No earlier related copy was identified in the searched corpus, so origin cannot be
+{% else %}No matching copy was identified in the searched reference corpus, so origin cannot be
 established from available data.{% endif %}
-{% if entities %}The following media-derived identifiers were recovered:
-{% for e in entities %}{{ e.value }} ({{ e.entity_type }}){{ ", " }}{% endfor %}
+{% if entities %}The following media-derived identifiers were recovered via OCR:
+{% for e in entities %}{{ e.value }} ({{ e.entity_type }}{% if e.ocr_confidence %} — {{ '%.0f'|format(e.ocr_confidence) }}% OCR confidence on frame {{ e.frame_number if e.frame_number is not none else e.frame_index }}{% if e.timestamp_s is not none %}, {{ '%.1f'|format(e.timestamp_s) }}s{% endif %}{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}.
 {% else %}No media-derived identifiers were recovered.{% endif %}
 {% if leads %}{{ leads|length }} investigative lead(s) are listed above for human review.{% endif %}</p>
 
@@ -913,8 +914,8 @@ DOSSIER_TPL = _HEAD + """
 </table>
 
 {% if recapture and recapture.likelihood %}
-<p><b>Display Recapture &amp; Interface:</b> {{ recapture.likelihood }} likelihood (Score: {{ recapture.score|f }}/100).
-{% if recovered_handles %}Recovered candidate handle(s): {% for h in recovered_handles %}<span class="mono">{{ h.handle }}</span> (conf {{ h.confidence }}%){% if not loop.last %}, {% endif %}{% endfor %}.{% else %}No interface handle recovered.{% endif %}</p>
+<p><b>Display Recapture &amp; Interface:</b> {{ recapture.likelihood }} indication (Score: {{ recapture.score|f }}/100).
+{% if recovered_handles %}Recovered candidate handle(s): {% for h in recovered_handles %}<span class="mono">{{ h.handle }}</span> ({{ h.confidence }}% OCR confidence on frame {{ h.frame_index }}){% if not loop.last %}, {% endif %}{% endfor %}.{% else %}No interface handle recovered.{% endif %}</p>
 {% endif %}
 
 <h2>5. Origin Propagation &amp; Stress Robustness</h2>

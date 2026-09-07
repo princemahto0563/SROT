@@ -78,6 +78,24 @@ function stateTone(st?: string): "ok" | "accent" | "danger" | "muted" {
   return "muted";
 }
 
+function formatConsistency(s?: string | null): string {
+  if (!s) return "—";
+  switch (s.toUpperCase()) {
+    case "STRONG_CONSISTENCY":
+      return "Multiple checks support the same finding";
+    case "MODERATE_CONSISTENCY":
+      return "Most checks support the same finding";
+    case "MIXED":
+      return "Checks show mixed results";
+    case "CONFLICTING":
+      return "Important checks disagree";
+    case "INSUFFICIENT":
+      return "Not enough evidence for a reliable conclusion";
+    default:
+      return s.replace(/_/g, " ");
+  }
+}
+
 export default function Benchmark() {
   const b = useApi<BenchmarkData>("/benchmark/adversarial-summary", []);
   const [activeTab, setActiveTab] = useState<string>("ALL");
@@ -85,17 +103,14 @@ export default function Benchmark() {
   return (
     <>
       <PageHead
-        eyebrow="Verification & Validation · Multi-Stream Adversarial Test Bench"
+        eyebrow="Verification & Validation · Multi-Signal Adversarial Test Bench"
         title="Internal Adversarial Validation Benchmark"
-        sub="Continuous evaluation across 27 reference samples spanning authentic camera capture,
-             AI-synthesized generators, multi-stage compression laundering, facial splicing, and display recaptures."
+        sub="Tests cover authentic media, AI-generated media, manipulated media, and common post-processing attacks across 27 reference samples."
       />
 
       <div className="mb-4">
         <Notice kind="info">
-          <b>Internal validation benchmark</b>: This dataset is a curated technical test bench designed to
-          measure signal behavior, failure boundaries, and cross-signal safeguards. It is <b>not a statistical
-          field population</b> and does not claim uniform general-population accuracy.
+          <b>Internal validation results on the current benchmark. These metrics are not universal real-world accuracy.</b> This dataset is a curated technical test bench designed to measure signal behavior, failure boundaries, and cross-signal safeguards. It is not a statistical field population and does not claim uniform general-population accuracy.
         </Notice>
       </div>
 
@@ -137,30 +152,30 @@ export default function Benchmark() {
                   sub="Apple MPS / CPU"
                 />
                 <Stat
-                  label="Sensitivity (TPR)"
+                  label="Recall (TPR)"
                   value={`${((data.metrics?.tpr_recall ?? 0) * 100).toFixed(1)}%`}
-                  sub="True positive recall"
+                  sub="Of target-class samples, how many were detected."
                 />
                 <Stat
                   label="Specificity (TNR)"
                   value={`${((data.metrics?.tnr_specificity ?? 0) * 100).toFixed(1)}%`}
-                  sub="True negative rate"
+                  sub="Of authentic samples, how many were correctly unflagged."
                 />
                 <Stat
                   label="Precision"
                   value={`${((data.metrics?.precision ?? 0) * 100).toFixed(1)}%`}
-                  sub="Positive predictive val"
+                  sub="Of flagged samples, how many were actually target class."
                 />
                 <Stat
                   label="F1-Score"
                   value={`${((data.metrics?.f1_score ?? 0) * 100).toFixed(1)}%`}
-                  sub="Harmonic balance"
+                  sub="Combined measure of precision and recall."
                 />
               </div>
 
               {/* Confusion Matrix & Safeguards Panel */}
               <div className="grid gap-4 lg:grid-cols-2">
-                <Panel title="Confusion Matrix & Classification Partition">
+                <Panel title={`Confusion matrix — n = ${(data.confusion_matrix?.true_positives ?? 0) + (data.confusion_matrix?.false_positives ?? 0) + (data.confusion_matrix?.false_negatives ?? 0) + (data.confusion_matrix?.true_negatives ?? 0)} binary-classified samples`}>
                   <div className="grid grid-cols-2 gap-2 text-center text-xs">
                     <div className="rounded-lg border border-ok/30 bg-ok/5 p-3">
                       <div className="text-[10.5px] font-semibold text-muted uppercase">True Positives</div>
@@ -186,6 +201,9 @@ export default function Benchmark() {
                   <div className="mt-3 text-[11px] text-muted leading-relaxed">
                     False positive rate: <b>{((data.metrics?.fpr ?? 0) * 100).toFixed(2)}%</b> · False negative rate: <b>{((data.metrics?.fnr ?? 0) * 100).toFixed(2)}%</b>.
                     SROT deliberately opts for higher specificity on compressed and recaptured images to prevent wrongful accusations.
+                  </div>
+                  <div className="mt-2.5 rounded-lg border border-lineSoft bg-s2/50 p-2.5 text-[11px] text-muted leading-relaxed">
+                    Remaining benchmark samples (4 samples: Face Swap / Spliced [3] and Display Recapture [1]) were evaluated separately because they belong to categories outside the binary confusion-matrix classification.
                   </div>
                 </Panel>
 
@@ -251,8 +269,8 @@ export default function Benchmark() {
                     "Ground Truth",
                     "Evidence State",
                     "Signal Consistency",
-                    "Neural ViT",
-                    "Recapture",
+                    "Neural Score",
+                    "Recapture Indication",
                     "Quality",
                     "Latency",
                   ]}
@@ -282,13 +300,13 @@ export default function Benchmark() {
                           </div>
                         </Cell>
                         <Cell>
-                          <span className="text-[11px] font-mono text-ink2">
-                            {r.signal_consistency ? r.signal_consistency.replace(/_/g, " ") : "—"}
+                          <span className="text-[11px] text-ink2">
+                            {formatConsistency(r.signal_consistency)}
                           </span>
                         </Cell>
                         <Cell>
                           <span className="font-mono text-[11px]">
-                            {r.neural_score_pct != null ? `${r.neural_score_pct.toFixed(1)}%` : "—"}
+                            {r.neural_score_pct != null ? `${r.neural_score_pct.toFixed(1)} / 100` : "—"}
                           </span>
                         </Cell>
                         <Cell>

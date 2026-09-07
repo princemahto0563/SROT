@@ -8,12 +8,12 @@ import { api, useApi, fmtDate } from "../lib/api";
 import type { Consistency, Evidence, Packet as PacketPayload } from "../lib/api";
 
 const DOC_LABEL: Record<string, string> = {
-  bsa63_certificate: "BSA §63 certificate (draft for signature)",
+  bsa63_certificate: "BSA Section 63 certificate",
   hash_report: "SHA-256 hash report",
   chain_of_custody: "Chain of custody",
   technical_annexure: "Technical forensic annexure",
-  preservation_request: "Preservation request (draft)",
-  forensic_report: "Forensic media analysis report",
+  preservation_request: "Preservation request",
+  forensic_report: "Forensic analysis report",
 };
 
 export default function Packet() {
@@ -212,9 +212,8 @@ function Body({ evidence }: { evidence: Evidence }) {
     <>
       <PageHead
         eyebrow="Step 11 · Court-ready evidence packet"
-        title="Pre-filled documents for verification and signature"
-        sub="Every document is rendered from one canonical payload, so the figures in the certificate,
-             the annexure and the report cannot disagree with the API or the database."
+        title="Structured evidence documentation for examiner and legal review"
+        sub="Canonical documentation rendered directly from the analysis record. Figures across certificates, reports, and annexures are derived from identical database values."
         right={
           <div className="flex items-center gap-2">
             <button
@@ -265,7 +264,7 @@ function Body({ evidence }: { evidence: Evidence }) {
 
       <div className="mb-4">
         <Notice kind="warn">
-          This is a <b>structured forensic evidence packet and supporting documentation for examiner review</b>. It is <b>not an automatic guarantee of legal admissibility</b>. Legal admissibility is determined by the presiding court. SROT provides objective technical decision support and does not certify anything on anyone's behalf.
+          Structured evidence documentation for examiner and legal review. This does not constitute an automatic guarantee of legal admissibility. Legal admissibility is determined by the presiding court. SROT provides objective technical decision support and does not certify anything on anyone's behalf.
         </Notice>
       </div>
 

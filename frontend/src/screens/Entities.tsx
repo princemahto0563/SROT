@@ -29,12 +29,13 @@ export default function Entities() {
 function Body({ evidenceRef }: { evidenceRef: string }) {
   const e = useApi<Payload>(`/evidence/${evidenceRef}/entities`);
   const [sel, setSel] = useState<number>(0);
+  const [showLanguages, setShowLanguages] = useState(false);
 
   return (
     <>
       <PageHead
         eyebrow="Step 5 · OCR &amp; media-derived identifiers"
-        title="Identifiers read from inside the media"
+        title="Text and identifiers found in the media"
         sub="Every identifier below was read by OCR from a specific frame, at a specific pixel location,
              with a recorded confidence. They are media-derived identifiers — SROT does not resolve
              who owns them."
@@ -56,12 +57,34 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
               <div className="mb-4 flex flex-wrap items-center gap-2.5">
                 <Chip tone="muted" dot={false}>{ents.length} identifiers</Chip>
                 {langs.length > 0 && (
-                  <Chip tone="muted" dot={false}>OCR languages installed: {langs.join(", ")}</Chip>
+                  <div className="flex items-center gap-2">
+                    <Chip tone="muted" dot={false}>
+                      OCR languages: {langs.length >= 50 ? "50+ installed" : `${langs.length} installed`}
+                    </Chip>
+                    <button
+                      type="button"
+                      onClick={() => setShowLanguages(!showLanguages)}
+                      className="text-[11px] font-semibold text-accent hover:underline"
+                    >
+                      {showLanguages ? "Hide supported languages" : "View supported languages"}
+                    </button>
+                  </div>
                 )}
                 {(d.scripts_detected ?? []).map((s) => (
                   <Chip key={s} tone="violet" dot={false}>{s}</Chip>
                 ))}
               </div>
+
+              {showLanguages && langs.length > 0 && (
+                <div className="mb-4 rounded-lg border border-line bg-s2/60 p-3 text-[11px]">
+                  <div className="font-semibold text-ink mb-1.5">Supported OCR Languages ({langs.length}):</div>
+                  <div className="flex flex-wrap gap-1 font-mono text-[10.5px] text-ink2 max-h-36 overflow-y-auto">
+                    {langs.map((l) => (
+                      <span key={l} className="rounded bg-s3 px-1.5 py-0.5 border border-lineSoft">{l}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
                 <Panel title="Extracted identifiers"

@@ -340,9 +340,9 @@ def synthesize_cross_signal_assessment(
                 f"{anom_audio[0].get('score')}/100). Physical acoustic features suggest potential splicing or non-linear vocoding."
             )
             synthesis_narrative = (
-                "Acoustic forensic analysis identified physical discontinuities in the audio waveform. "
-                f"Elevated indicators were measured on {', '.join(s.get('name') for s in anom_audio)}. "
-                "These physical measurements reflect acoustic dynamics; human examiner review of the raw waveform is advised."
+                f"Acoustic analysis identified waveform discontinuities across {', '.join(s.get('name') for s in anom_audio)}. "
+                "These physical measurements point toward non-linear editing or vocoding artifacts. "
+                "The findings provide technical indications rather than proof; examiner review of the uncompressed audio track is recommended."
             )
         else:
             evidence_state = "CONSISTENT"
@@ -353,8 +353,8 @@ def synthesize_cross_signal_assessment(
                 "fall within baseline parameters for natural recordings."
             )
             synthesis_narrative = (
-                "No strong acoustic or spectral anomalies were detected across the audio stream. Waveform exhibits "
-                "natural dynamic range and vocal micro-tremor consistent with authentic microphone capture."
+                "The audio stream shows no measurable acoustic or spectral anomalies. "
+                "Dynamic range and vocal pitch variance remain consistent with authentic microphone capture."
             )
     elif q_status in ("INSUFFICIENT_EVIDENCE", "POOR") or (not neural_available and not signals):
         evidence_state = "INSUFFICIENT"
@@ -365,55 +365,51 @@ def synthesize_cross_signal_assessment(
             "Forensic decision-support advises inconclusive status."
         )
         synthesis_narrative = (
-            "Insufficient evidence was available from the submitted media to establish a strong manipulation conclusion. "
-            "Signals were either unavailable or mathematically attenuated. The evidence is marked INSUFFICIENT."
+            "The submitted media provides insufficient signal detail for a reliable conclusion. "
+            "Severe compression, downscaling, or missing streams prevent decisive attribution, so the finding remains inconclusive."
         )
     elif is_recaptured and neural_elevated:
         evidence_state = "PARTIALLY_CORROBORATED"
         signal_consistency = "MIXED"
         synthesis_headline = "Screen-Recorded Media Container with Elevated Synthetic-Image Signal"
         evidence_state_rationale = (
-            f"Neural model reports elevated synthetic score ({(neural_score*100):.1f}%), but physical recapture signatures "
+            f"Neural model reports elevated synthetic score ({(neural_score*100):.1f} / 100), but physical recapture signatures "
             "are present. Patch-based vision transformers have an established empirical sensitivity to sharp UI interface borders. "
             "Evidence state is assigned PARTIALLY_CORROBORATED to prevent false-positive overconfidence."
         )
         synthesis_narrative = (
-            "Cross-signal analysis reveals a layered evidentiary profile. Recapture forensics established "
-            "conclusive physical signatures of mobile screen-recording (static interface bands and letterboxing). "
-            f"The Vision Transformer neural detector reports an AI-synthetic score of {(neural_score*100):.1f}%. "
-            "However, in accordance with SROT's empirical benchmark findings, screen-recorded UI elements can produce "
-            "elevated false-positive scores on patch-based transformers. Therefore, the neural score must be treated as "
-            "corroborative decision support rather than standalone proof of generative manipulation. The primary investigative "
-            "focus should center on recovered interface identifiers and propagation tracing."
+            "Examiner note: Cross-signal checks show a layered evidentiary picture. Static interface bands and letterbox geometry "
+            f"confirm this media is a mobile screen recording. While the neural vision model returned an elevated score of {(neural_score*100):.1f} / 100 "
+            "(model score, not a calibrated probability), benchmark tests demonstrate that sharp vector UI borders can independently elevate patch-transformer scores. "
+            "Consequently, the neural reading serves as contextual decision support rather than proof of generative tampering. "
+            "Investigative priority should focus on recovered screen identifiers and propagation tracing."
         )
     elif neural_strong and classical_low_count >= 2 and not is_recaptured:
         evidence_state = "CONFLICTING"
         signal_consistency = "CONFLICTING"
         synthesis_headline = "Disagreement Observed Between Neural and Physical Forensic Signals"
         evidence_state_rationale = (
-            f"Swin-ViT neural detector indicates elevated AI-synthetic characteristics ({(neural_score*100):.1f}%), whereas "
+            f"Swin-ViT neural detector indicates elevated AI-synthetic characteristics ({(neural_score*100):.1f} / 100), whereas "
             "classical sensor noise and DCT compression statistics conform to natural optical capture. "
             "Evidence streams are in disagreement; expert manual examination is required."
         )
         synthesis_narrative = (
-            f"A notable divergence exists between analytic domains. The neural Vision Transformer reports a high synthetic score "
-            f"({(neural_score*100):.1f}%), while physical compression and sensor noise distributions display standard photographic "
-            "characteristics. Such conflict can arise with recent diffusion models or complex hybrid edits. No definitive conclusion "
-            "can be automated."
+            f"Analytic domains point in divergent directions: the neural model flagged synthetic patterns (score: {(neural_score*100):.1f} / 100), "
+            "yet sensor noise residuals and DCT compression structures match standard camera capture. "
+            "Such divergence typically reflects modern diffusion techniques or selective local editing. The result cannot be resolved automatically and requires targeted manual review."
         )
     elif neural_elevated and not is_recaptured:
         evidence_state = "CONSISTENT"
         signal_consistency = "STRONG_CONSISTENCY" if classical_elevated_count >= 1 else "MODERATE_CONSISTENCY"
         synthesis_headline = "Elevated Synthetic-Image Signal Observed"
         evidence_state_rationale = (
-            f"Neural model reports synthetic-image score of {(neural_score*100):.1f}%, supported by classical compression "
+            f"Neural model reports synthetic-image score of {(neural_score*100):.1f} / 100, supported by classical compression "
             "and absence of camera metadata."
         )
         synthesis_narrative = (
-            f"The Vision Transformer neural detector reports a synthetic-image score of {(neural_score*100):.1f}%. "
-            "No screen-recording interface rows were detected. Classical compression and sensor-noise signals "
-            "exhibit properties consistent with synthetic generation or heavy lossy re-encoding. "
-            "Findings warrant expert review of fine-grained spatial residuals."
+            f"The neural model identified elevated synthetic characteristics (score: {(neural_score*100):.1f} / 100). "
+            "No screen-recording artifacts were detected. Classical frequency and noise checks show patterns consistent with synthetic synthesis or aggressive re-encoding. "
+            "Examiner inspection of high-frequency edge residuals is warranted."
         )
     elif is_recaptured and not neural_elevated:
         evidence_state = "CONSISTENT"
@@ -423,9 +419,9 @@ def synthesize_cross_signal_assessment(
             "Evidence exhibits definitive screen-recording characteristics while neural and physical signals remain baseline."
         )
         synthesis_narrative = (
-            "Evidence exhibits definitive screen-recording characteristics (static interface rows), while neural "
-            "and classical forensic signals show no strong synthetic-generation indicators. The media appears to be a "
-            "screen capture of natural or standard photographic content."
+            "The file displays clear characteristics of a screen capture (static interface banners and borders), "
+            "with both neural and physical signals remaining within standard photographic baselines. "
+            "The content appears to be a recording of genuine media without generative synthesis indicators."
         )
     else:
         evidence_state = "CONSISTENT"
@@ -435,8 +431,8 @@ def synthesize_cross_signal_assessment(
             "All physical, compression, and neural measurements fall within baseline parameters for natural forwarded media."
         )
         synthesis_narrative = (
-            "No strong synthetic-image, manipulation, or screen-recapture anomalies were identified across the "
-            "evaluated forensic signals. Media exhibits a baseline distribution profile consistent with authentic forwarded content."
+            "No significant indicators of synthetic generation, localized tampering, or display recapture were observed. "
+            "The measured compression and sensor metrics conform to standard forwarded digital media."
         )
 
     return {

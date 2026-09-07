@@ -50,9 +50,8 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
     <>
       <PageHead
         eyebrow="Step 6 · Investigation graph"
-        title="What was observed, and how each node was derived"
-        sub="Every node in this graph came from the media itself. Edges record whether the relationship
-             was directly observed or inferred, and by which method."
+        title="What SROT observed and how the connections were made"
+        sub="Every node in this graph was extracted from the media. Edges distinguish DIRECTLY OBSERVED relationships from INFERRED relationships."
       />
 
       <Async state={g} rows={5}>
@@ -135,17 +134,17 @@ function GraphView({ data, sel, setSel }: {
         <div className="flex flex-wrap items-center gap-2">
           <Chip tone="muted" dot={false}>{data.stats.nodes} nodes</Chip>
           <Chip tone="muted" dot={false}>{data.stats.edges} edges</Chip>
-          <Chip tone="accent" dot={false}>{data.stats.directly_observed} directly observed</Chip>
-          <Chip tone="violet" dot={false}>{data.stats.inferred} inferred</Chip>
+          <Chip tone="accent" dot={false} title="Taken directly from the media or evidence record.">{data.stats.directly_observed} directly observed</Chip>
+          <Chip tone="violet" dot={false} title="Suggested from relationships between observed evidence. Not proof of identity or involvement.">{data.stats.inferred} inferred</Chip>
         </div>
         <div className="flex items-center gap-4 text-[11px] text-ink2 bg-s2 border border-line px-3 py-1.5 rounded-lg">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" title="Taken directly from the media or evidence record.">
             <span className="inline-block w-4 h-[2px] bg-[#4CA6E8]"></span>
-            <span className="font-medium text-ink">Direct Evidence</span>
+            <span className="font-medium text-ink">Directly Observed</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" title="Suggested from relationships between observed evidence. Not proof of identity or involvement.">
             <span className="inline-block w-4 h-[2px] border-b-2 border-dashed border-[#9B96E8]"></span>
-            <span className="font-medium text-ink">Inferred Association</span>
+            <span className="font-medium text-ink">Inferred</span>
           </div>
         </div>
       </div>
@@ -215,8 +214,8 @@ function GraphView({ data, sel, setSel }: {
                         <li key={e.id} className="rounded-lg border border-lineSoft bg-s2/50 px-3 py-2">
                           <div className="flex items-center gap-2 text-[11.5px]">
                             <span className="font-semibold text-ink">{e.relation}</span>
-                            <Chip tone={e.observation === "DIRECTLY_OBSERVED" ? "accent" : "violet"} dot={false}>
-                              {e.observation === "DIRECTLY_OBSERVED" ? "observed" : "inferred"}
+                            <Chip tone={e.observation === "DIRECTLY_OBSERVED" ? "accent" : "violet"} dot={false} title={e.observation === "DIRECTLY_OBSERVED" ? "Taken directly from the media or evidence record." : "Suggested from relationships between observed evidence. Not proof of identity or involvement."}>
+                              {e.observation === "DIRECTLY_OBSERVED" ? "Directly observed" : "Inferred"}
                             </Chip>
                           </div>
                           <p className="mt-1 text-[11px] leading-relaxed text-muted">{e.reason}</p>
@@ -240,14 +239,18 @@ function GraphView({ data, sel, setSel }: {
                 </div>
               ))}
             </div>
-            <div className="mt-3 space-y-1.5 text-[11px] text-muted">
-              <div className="flex items-center gap-2">
-                <svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="#2C4157" strokeWidth="1.6" /></svg>
-                Directly observed relationship
+            <div className="mt-4 space-y-2.5 text-[11px] text-muted border-t border-line pt-3">
+              <div className="flex items-start gap-2">
+                <svg width="24" height="12" className="mt-1 flex-shrink-0"><line x1="0" y1="6" x2="24" y2="6" stroke="#2C4157" strokeWidth="2" /></svg>
+                <div>
+                  <span className="font-semibold text-ink">Directly observed:</span> Taken directly from the media or evidence record.
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="#9B96E8" strokeWidth="1.6" strokeDasharray="5 4" /></svg>
-                Inferred relationship
+              <div className="flex items-start gap-2">
+                <svg width="24" height="12" className="mt-1 flex-shrink-0"><line x1="0" y1="6" x2="24" y2="6" stroke="#9B96E8" strokeWidth="2" strokeDasharray="5 4" /></svg>
+                <div>
+                  <span className="font-semibold text-ink">Inferred:</span> Suggested from relationships between observed evidence. Not proof of identity or involvement.
+                </div>
               </div>
             </div>
           </Panel>
@@ -256,9 +259,8 @@ function GraphView({ data, sel, setSel }: {
 
       <div className="mt-4">
         <Notice kind="warn">
-          A connection in this graph is a potential connection between artefacts observed in media.
-          It is not a claim that the same person is behind them, and it does not establish identity,
-          ownership or intent.
+          A connection in this graph is an investigative lead, not proof of identity, ownership, or intent.
+          It represents a relationship between artefacts observed in media and requires independent examiner verification.
         </Notice>
       </div>
     </>

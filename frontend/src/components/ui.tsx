@@ -31,9 +31,9 @@ const toneMap: Record<Tone, string> = {
   muted:  "text-ink2 border-line bg-s2",
   violet: "text-violet border-violet/40 bg-violet/10",
 };
-export function Chip({ tone = "muted", children, dot = true }: { tone?: Tone; children: ReactNode; dot?: boolean }) {
+export function Chip({ tone = "muted", children, dot = true, title, className = "" }: { tone?: Tone; children: ReactNode; dot?: boolean; title?: string; className?: string }) {
   return (
-    <span className={`chip ${toneMap[tone]}`}>
+    <span title={title} className={`chip ${toneMap[tone]} ${className}`}>
       {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
       {children}
     </span>

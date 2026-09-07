@@ -21,10 +21,8 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
     <>
       <PageHead
         eyebrow="Step 3 · Origin trace"
-        title="Earliest known copy in the searched corpus"
-        sub="Perceptual hashes survive re-encoding, rescaling, cropping and metadata removal. Matching
-             is done across several normalised views of each frame, and the view that produced the
-             match is recorded."
+        title="Earliest Known Copy in Searched Reference Corpus"
+        sub="Similarity fingerprints (perceptual hashes) survive re-encoding, rescaling, cropping and metadata removal. Matching is performed across normalized views against the searched reference corpus."
       />
 
       <Async state={o} rows={6}>
@@ -33,13 +31,14 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
             {!d.established ? (
               <div className="mb-4">
                 <EmptyState
-                  title="Attribution cannot be established from available data."
-                  detail={d.empty_reason ?? "No qualifying near-duplicate was found in the reference corpus."}
+                  title="No matching copy found in the searched reference corpus."
+                  detail={d.empty_reason ?? "No qualifying near-duplicate was found in the searched reference corpus."}
                 />
               </div>
             ) : (
               <div className="mb-4 grid gap-4 lg:grid-cols-[1.15fr_minmax(0,1fr)]">
-                <Panel title="Earliest known copy">
+                <Panel title="Earliest known copy"
+                       hint="Oldest matching copy found in the searched reference corpus.">
                   <div className="flex flex-wrap items-baseline gap-3">
                     <span className="font-mono text-[19px] font-semibold text-accent">
                       {d.earliest?.label}
@@ -47,7 +46,7 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
                     <Chip tone="accent">{d.earliest?.source_kind}</Chip>
                   </div>
                   <div className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-3.5">
-                    <Field label="Observed">{fmtDate(d.earliest?.observed_at)}</Field>
+                    <Field label="Observed in corpus">{fmtDate(d.earliest?.observed_at)}</Field>
                     <Field label="Similarity">{fmtNum(d.earliest?.similarity)}%</Field>
                     <Field label="Hamming distance">{d.earliest?.hamming} / 64 bits</Field>
                     <Field label="Propagation span">
@@ -66,11 +65,11 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
                 </Panel>
 
                 <Panel title="Matching method"
-                       hint="The threshold was measured against two populations, not chosen by feel.">
+                       hint="The threshold was calibrated against representative populations, not chosen arbitrarily.">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">
                     <Field label="Method">{d.method}</Field>
                     <Field label="Threshold">{d.threshold}</Field>
-                    <Field label="Corpus searched">{d.corpus_size} items</Field>
+                    <Field label="Reference corpus searched">{d.corpus_size} items</Field>
                     <Field label="Qualifying matches">{d.match_count}</Field>
                   </div>
                   <div className="mt-3.5">
@@ -83,14 +82,13 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
               </div>
             )}
 
-            <Panel title="Corpus matches, ordered by first observation"
-                   hint="Ordering shows how the media propagated through the searched corpus. It is not a
-                         claim about first publication anywhere.">
+            <Panel title="Reference corpus matches, ordered by first observation"
+                   hint="Ordering shows propagation within the searched reference corpus. It does not imply universal discovery across the entire internet.">
               {d.matches.length === 0 ? (
-                <EmptyState title="No qualifying matches."
+                <EmptyState title="No qualifying matches in the searched reference corpus."
                             detail={d.empty_reason ?? undefined} />
               ) : (
-                <Table head={["Observed", "Corpus label", "Kind", "Similarity", "Hamming",
+                <Table head={["Observed", "Reference corpus label", "Kind", "Similarity", "Hamming",
                               "Frames matched", "Transformation", "SHA-256"]}>
                   {d.matches.map((m) => (
                     <Row key={m.corpus_id} tone={m.is_earliest ? "bg-accent/[0.06]" : ""}>
@@ -122,7 +120,7 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
               )}
               {d.matches.some((m) => m.is_synthetic) && (
                 <p className="mt-3 text-[11px] leading-relaxed text-muted">
-                  Every corpus item in this build is synthetic demonstration media generated locally.
+                  Every reference corpus item in this build is synthetic demonstration media generated locally.
                   SROT performs no live social-media scraping and reaches no external service.
                 </p>
               )}
@@ -143,11 +141,10 @@ function Ceiling({ ceiling }: { ceiling: Origin["attribution_ceiling"] }) {
   const lastAuto = [...steps].reverse().find((s) => s.established);
 
   return (
-    <Panel title="Attribution ceiling"
-           hint="How far automated analysis can go, and exactly where the process must hand over to a
-                 legal request or a human investigator.">
+    <Panel title="Evidence & Attribution Limits"
+           hint="What SROT can establish automatically — and what still requires an investigator or authorized external request.">
       {steps.length === 0 ? (
-        <EmptyState title="Attribution ceiling not available for this evidence." />
+        <EmptyState title="Evidence and attribution limits not available for this evidence." />
       ) : (
         <ol className="space-y-2">
           {steps.map((s) => (
@@ -174,7 +171,7 @@ function Ceiling({ ceiling }: { ceiling: Origin["attribution_ceiling"] }) {
       )}
       <div className="mt-4">
         <Notice kind="warn">
-          Automated attribution stops at
+          Automated attribution limits stop at
           {lastAuto ? ` step ${lastAuto.step}: ${lastAuto.what.toLowerCase()}.` : " the first step."}{" "}
           Everything beyond it requires an authorised legal request or human investigation. SROT does
           not identify any person and does not resolve who controls an account or an identifier.

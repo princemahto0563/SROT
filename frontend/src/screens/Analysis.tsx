@@ -8,7 +8,7 @@ import {
 } from "../components/ui";
 import { RequireEvidence } from "../components/guards";
 import { useApi, api, fmtNum } from "../lib/api";
-import type { Signal, CrossSignalAssessment, QualityGate, ReplayResult } from "../lib/api";
+import type { Signal, CrossSignalAssessment, QualityGate, ReplayResult, Evidence } from "../lib/api";
 
 type AnalysisPayload = {
   evidence_ref: string; assessment: string; confidence_band: string;
@@ -72,15 +72,48 @@ const statusTone = (status: string) => {
   }
 };
 
-export default function Analysis() {
+export const formatConsistency = (s?: string | null): string => {
+  if (!s) return "Not enough evidence for a reliable conclusion";
+  switch (s.toUpperCase()) {
+    case "STRONG_CONSISTENCY":
+      return "Multiple checks support the same finding";
+    case "MODERATE_CONSISTENCY":
+      return "Most checks support the same finding";
+    case "MIXED":
+      return "Checks show mixed results";
+    case "CONFLICTING":
+      return "Important checks disagree";
+    case "INSUFFICIENT":
+      return "Not enough evidence for a reliable conclusion";
+    default:
+      return s.replace(/_/g, " ");
+  }
+};
+
+const METRIC_LABELS: Record<string, string> = {
+  blockiness: "Compression artifacts",
+  blockiness_ratio: "Compression blockiness",
+  sensor_noise_residual: "Sensor noise",
+  high_freq_energy: "High-frequency detail",
+  dct_std: "Compression-domain variation",
+  temporal_continuity: "Frame-to-frame consistency",
+  noise_residual: "Noise residual",
+  compression_blockiness: "Compression blockiness",
+  sharpness_laplacian: "Edge sharpness (Laplacian)",
+  dynamic_range: "Dynamic range",
+  noise_variance: "Sensor noise floor variance",
+  ela_mean_diff: "Error Level Analysis delta",
+};
+
+export default function AnalysisScreen() {
   return (
     <RequireEvidence>
-      {(ev) => <AnalysisBody evidenceRef={ev.evidence_ref} />}
+      {(ev) => <AnalysisBody evidenceRef={ev.evidence_ref} evidence={ev} />}
     </RequireEvidence>
   );
 }
 
-function AnalysisBody({ evidenceRef }: { evidenceRef: string }) {
+function AnalysisBody({ evidenceRef, evidence }: { evidenceRef: string; evidence?: Evidence }) {
   const a = useApi<AnalysisPayload>(`/evidence/${evidenceRef}/analysis`);
   const frames = useApi<FramesPayload>(`/evidence/${evidenceRef}/frames`);
   const cross = useApi<CrossSignalAssessment>(`/evidence/${evidenceRef}/cross-signal-assessment`);
@@ -108,7 +141,7 @@ function AnalysisBody({ evidenceRef }: { evidenceRef: string }) {
     <>
       <PageHead
         eyebrow="Step 2 · Forensic analysis & evidence matrix"
-        title="Multi-Stream Forensic Assessment"
+        title="Multi-Signal Forensic Assessment"
         sub="Synthesizes cryptographic integrity, physical sensor noise, compression physics, display recapture, and AI-synthetic neural signals into a transparent, defensible forensic assessment."
         right={
           <Button onClick={runReplay} disabled={replayLoading} tone="ghost">
@@ -156,7 +189,7 @@ function AnalysisBody({ evidenceRef }: { evidenceRef: string }) {
               <FileCheck size={18} className="text-accent" />
               <span className="text-[14px] font-bold text-ink">Deterministic Forensic Replay Verification</span>
               <Chip tone={replayData.ok ? "ok" : "danger"}>
-                {replayData.ok ? "100% REPRODUCIBLE" : "DIVERGENCE DETECTED"}
+                {replayData.ok ? "DETERMINISTICALLY REPRODUCED" : "DIVERGENCE DETECTED"}
               </Chip>
             </div>
             <div className="flex items-center gap-2 text-[11px] font-mono text-muted">
@@ -233,8 +266,11 @@ function AnalysisBody({ evidenceRef }: { evidenceRef: string }) {
                 <Chip tone={cross.data.evidence_state === "CONSISTENT" ? "ok" : cross.data.evidence_state === "PARTIALLY_CORROBORATED" ? "amber" : cross.data.evidence_state === "CONFLICTING" ? "danger" : "muted"}>
                   Evidence State: {cross.data.evidence_state}
                 </Chip>
-                <Chip tone={cross.data.signal_consistency === "STRONG_CONSISTENCY" ? "ok" : cross.data.signal_consistency === "MODERATE_CONSISTENCY" ? "accent" : cross.data.signal_consistency === "MIXED" ? "amber" : "danger"}>
-                  Signal Agreement: {cross.data.signal_consistency}
+                <Chip
+                  tone={cross.data.signal_consistency === "STRONG_CONSISTENCY" ? "ok" : cross.data.signal_consistency === "MODERATE_CONSISTENCY" ? "accent" : cross.data.signal_consistency === "MIXED" ? "amber" : "danger"}
+                  title="Shows whether independent checks point in the same direction."
+                >
+                  Signal Agreement: {formatConsistency(cross.data.signal_consistency)}
                 </Chip>
                 <Chip tone={cross.data.quality_status === "RELIABLE" ? "ok" : "amber"}>
                   Quality Gate: {cross.data.quality_status}
@@ -338,7 +374,7 @@ function AnalysisBody({ evidenceRef }: { evidenceRef: string }) {
           <>
             {/* Primary Ensemble & Quality Gate */}
             <div className="mb-5 grid gap-4 lg:grid-cols-[1.1fr_1fr]">
-              <Panel title="Assessment & Ensemble Summary">
+              <Panel title="Assessment & Forensic Signal Ensemble Summary" hint="Combined assessment from multiple independent forensic checks.">
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="text-[26px] font-bold leading-none text-ink">{d.assessment}</div>
                   <Chip tone={bandTone(d.confidence_band)}>{d.confidence_band} confidence</Chip>
@@ -401,8 +437,14 @@ function AnalysisBody({ evidenceRef }: { evidenceRef: string }) {
                   </div>
 
                   <div className="mt-3.5 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
+                    {(evidence?.width || typeof d.container?.width === "number") && (evidence?.height || typeof d.container?.height === "number") && (
+                      <div className="flex justify-between border-b border-lineSoft py-1">
+                        <span className="text-muted" title="Original dimensions of the uploaded media file.">Source resolution</span>
+                        <span className="font-mono text-ink2">{String(evidence?.width || d.container?.width)}×{String(evidence?.height || d.container?.height)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between border-b border-lineSoft py-1">
-                      <span className="text-muted">Resolution</span>
+                      <span className="text-muted" title="Frame actually passed through the analysis preprocessing pipeline.">Analysis frame resolution (post-preprocessing)</span>
                       <span className="font-mono text-ink2">{d.quality_gate.metrics.width}×{d.quality_gate.metrics.height} ({d.quality_gate.metrics.megapixels} MP)</span>
                     </div>
                     <div className="flex justify-between border-b border-lineSoft py-1">
@@ -414,9 +456,13 @@ function AnalysisBody({ evidenceRef }: { evidenceRef: string }) {
                       <span className="font-mono text-ink2">{d.quality_gate.metrics.dynamic_range} / 255</span>
                     </div>
                     <div className="flex justify-between border-b border-lineSoft py-1">
-                      <span className="text-muted">Blockiness Ratio</span>
+                      <span className="text-muted">Compression artifacts (Blockiness ratio)</span>
                       <span className="font-mono text-ink2">{d.quality_gate.metrics.blockiness_ratio}</span>
                     </div>
+                  </div>
+
+                  <div className="mt-2 text-[10px] text-muted italic">
+                    Source resolution is the original media dimensions. Analysis frame resolution is the frame actually passed through the analysis preprocessing pipeline.
                   </div>
 
                   <div className="mt-3 rounded bg-s2/40 p-2.5 text-[10.5px] text-ink2">
@@ -600,7 +646,7 @@ function AnalysisBody({ evidenceRef }: { evidenceRef: string }) {
                 right={
                   prov.data?.all_stages_isolated ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-ok/10 px-2.5 py-0.5 text-[11px] font-semibold text-ok border border-ok/30">
-                      <ShieldCheck size={12} /> 100% Isolated Pipeline
+                      <ShieldCheck size={12} /> Verified Isolated Pipeline
                     </span>
                   ) : undefined
                 }
@@ -838,7 +884,9 @@ function MetricTree({ value, depth = 0 }: { value: unknown; depth?: number }) {
           const nested = v !== null && typeof v === "object" && !Array.isArray(v);
           return (
             <div key={k} className={nested ? "" : "flex justify-between gap-3 border-b border-lineSoft py-1 last:border-0"}>
-              <span className={`text-[11px] ${nested ? "font-semibold text-ink2" : "text-muted"}`}>{k}</span>
+              <span className={`text-[11px] ${nested ? "font-semibold text-ink2" : "text-muted"}`} title={k}>
+                {METRIC_LABELS[k] ?? k}
+              </span>
               {nested ? <MetricTree value={v} depth={depth + 1} />
                       : <span className="shrink-0 text-right"><MetricTree value={v} depth={depth + 1} /></span>}
             </div>
@@ -929,7 +977,7 @@ function ForensicDecisionCard({
     );
     if (sig) {
       if (sig.score != null) {
-        return `Model AI-synthetic score: ${fmtNum(sig.score, 1)}% (${sig.result}).`;
+        return `AI-synthetic model score: ${fmtNum(sig.score, 1)} / 100 (${sig.result}). Model score, not a calibrated probability.`;
       }
       return "Neural detector signal unavailable for this container.";
     }
@@ -947,7 +995,7 @@ function ForensicDecisionCard({
         : "Unmeasured";
     const suppCount = analysis.supporting?.length || 0;
     const countCount = analysis.counter?.length || 0;
-    return `Aggregate indicator score: ${agg} across ${analysis.frames_sampled} sampled keyframes (${suppCount} indicating manipulation, ${countCount} counter-indicator(s)).`;
+    return `Combined assessment: ${agg} across ${analysis.frames_sampled} sampled keyframes (${suppCount} indicating manipulation, ${countCount} counter-indicator(s)).`;
   })();
 
   // 3. Recapture result finding
@@ -963,9 +1011,9 @@ function ForensicDecisionCard({
   const provenanceFinding = (() => {
     const parts: string[] = [];
     if (analysis.provenance.c2pa_present) {
-      parts.push("C2PA cryptographic provenance manifest detected.");
+      parts.push("Signed content provenance information (C2PA Manifest) detected.");
     } else {
-      parts.push("No C2PA manifest found in container.");
+      parts.push("No C2PA credentials found in this file. This does not by itself indicate manipulation.");
     }
 
     const originItem = cross?.evidence_matrix?.find(
@@ -976,7 +1024,7 @@ function ForensicDecisionCard({
     if (originItem?.observation) {
       parts.push(originItem.observation);
     } else if (analysis.provenance.exif_fields === 0) {
-      parts.push("EXIF metadata stripped.");
+      parts.push("Metadata: EXIF tags removed during transmission.");
     } else {
       parts.push(`${analysis.provenance.exif_fields} EXIF tags preserved.`);
     }
@@ -986,7 +1034,7 @@ function ForensicDecisionCard({
   // 5. Cross-Signal Assessment finding
   const crossSignalFinding = (() => {
     if (cross) {
-      return `${cross.evidence_state} (${cross.signal_consistency.replace(/_/g, " ")}) — ${cross.synthesis_headline}.`;
+      return `${cross.evidence_state} (${formatConsistency(cross.signal_consistency)}) — ${cross.synthesis_headline}.`;
     }
     return `${analysis.assessment} (${analysis.confidence_band} confidence band).`;
   })();
@@ -1035,14 +1083,31 @@ function ForensicDecisionCard({
     return items;
   })();
 
+  // What the examiner should review next
+  const nextSteps = (() => {
+    const steps: string[] = [];
+    if (cross?.investigative_recommendations && cross.investigative_recommendations.length > 0) {
+      steps.push(...cross.investigative_recommendations);
+    }
+    if (analysis.frames_sampled > 0) {
+      steps.push("Inspect the peak suspicious keyframe in the Spatial Visual Trace Inspector for localized noise/compression discontinuities.");
+    }
+    if (analysis.provenance.c2pa_present) {
+      steps.push("Verify the C2PA cryptographic signature chain against the department trust store.");
+    } else {
+      steps.push("Query the searched reference corpus to trace earliest known copies and identify any prior syndication.");
+    }
+    return steps.slice(0, 3);
+  })();
+
   return (
     <div className="mb-5 rounded-xl border border-line bg-surface/90 p-4 shadow-panel">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div className="flex items-center gap-2">
           <Scale size={16} className="text-accent" />
-          <span className="text-[12px] font-bold uppercase tracking-wider text-muted">
-            Forensic Decision
+          <span className="text-[12px] font-bold uppercase tracking-wider text-ink">
+            FORENSIC DECISION &amp; EVIDENCE EXPLANATION
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1133,6 +1198,21 @@ function ForensicDecisionCard({
             ))}
           </ul>
         </div>
+      </div>
+
+      {/* Recommended Examiner Next Steps */}
+      <div className="mt-3.5 pt-2.5 border-t border-line/60">
+        <div className="text-[10.5px] font-bold uppercase tracking-wider text-accent mb-1.5">
+          What the examiner should review next
+        </div>
+        <ul className="space-y-1 text-[11px] text-ink2">
+          {nextSteps.map((step, idx) => (
+            <li key={idx} className="flex items-start gap-1.5">
+              <span className="font-mono text-accent font-bold">[{idx + 1}]</span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* Footer / Safeguard notice */}

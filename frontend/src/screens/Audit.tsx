@@ -13,9 +13,8 @@ export default function Audit() {
     <>
       <PageHead
         eyebrow="Step 10 · Audit trail"
-        title="Hash-linked record of everything the system did"
-        sub="Each entry stores the digest of the entry before it. Editing, inserting or deleting an
-             entry breaks the chain, and verification reports exactly where."
+        title="Hash-Linked Forensic Audit Chain"
+        sub="Each important action is recorded and cryptographically linked to the previous record. This makes later tampering easier to detect. SHA-256 is a cryptographic fingerprint of the file: changing even a single byte changes the fingerprint."
       />
 
       <Async state={a} rows={5}>
@@ -44,7 +43,7 @@ export default function Audit() {
             </div>
 
             <Panel title={`Chain entries (${d.entries.length})`}
-                   hint="Expand an entry to see the payload that was hashed and both link digests.">
+                   hint="Expand an entry to see the payload that was hashed and the SHA-256 link digests.">
               {d.entries.length === 0 ? (
                 <EmptyState title="No audit entries recorded for this case." />
               ) : (
@@ -99,9 +98,9 @@ function Entry({ row, index, genesis }: { row: AuditRow; index: number; genesis:
         <div className="border-t border-lineSoft px-3.5 py-3">
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Actor">{row.actor}</Field>
-            <Field label="Evidence hash at the time" mono>{row.evidence_hash}</Field>
-            <Field label="Previous digest" mono>{row.prev_hash}</Field>
-            <Field label="This entry's digest" mono>{row.current_hash}</Field>
+            <Field label="Evidence SHA-256 fingerprint" mono>{row.evidence_hash}</Field>
+            <Field label="Previous entry digest" mono>{row.prev_hash}</Field>
+            <Field label="This entry digest" mono>{row.current_hash}</Field>
           </div>
           <div className="mt-3">
             <div className="lbl mb-1.5">Hashed payload</div>
