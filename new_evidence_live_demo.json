@@ -1,0 +1,1232 @@
+{
+  "evidence": {
+    "id": 34,
+    "evidence_ref": "EV-CASE-2026-015-001",
+    "filename": "Instagram_Travel_Nature_Demo.mp4",
+    "media_kind": "video",
+    "mime_type": "video/mp4",
+    "size_bytes": 1696575,
+    "sha256": "0eb715a2fddf55b988c494be9fccd63f825c4249b57bcdade726f7f68a8981f8",
+    "hash_algorithm": "SHA-256",
+    "ingested_at": "2026-09-04T05:07:01.738999",
+    "width": 720,
+    "height": 1280,
+    "duration_s": 4.0,
+    "fps": 30.0,
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "container_format": "mov,mp4,m4a,3gp,3g2,mj2",
+    "encoder_tag": "Lavc63.1.101 libx264",
+    "has_audio": true,
+    "exif_fields": 0,
+    "exif": {},
+    "c2pa_present": false,
+    "c2pa_note": "No C2PA / JUMBF provenance manifest present in container.",
+    "latest_run": {
+      "id": 34,
+      "status": "completed",
+      "stage": "done",
+      "stages": {
+        "INGEST": "completed",
+        "ANALYSIS": "completed",
+        "NEURAL": "completed",
+        "TRACE": "completed",
+        "OCR": "completed",
+        "RECAPTURE": "completed",
+        "GRAPH": "completed",
+        "LEADS": "completed"
+      },
+      "assessment": "Inconclusive",
+      "confidence_band": "LOW",
+      "aggregate_score": 28.06,
+      "detector_backend": "heuristic-forensic-ensemble-v1 + neural-vit-v1",
+      "dissent": false,
+      "frames_sampled": 16,
+      "error": null,
+      "finished_at": "2026-09-04T05:07:18.503060"
+    }
+  },
+  "analysis": {
+    "evidence_ref": "EV-CASE-2026-015-001",
+    "assessment": "Inconclusive",
+    "confidence_band": "LOW",
+    "aggregate_score": 28.06,
+    "detector_backend": "heuristic-forensic-ensemble-v1 + neural-vit-v1",
+    "aggregation_formula": "aggregate = \u03a3(signal_score \u00d7 weight) / \u03a3(weight) over available supporting signals; counter-indicators subtract at half weight. Weights are fixed and printed with the result so the arithmetic can be checked.",
+    "neural_detector_loaded": true,
+    "frames_sampled": 16,
+    "dissent": false,
+    "finished_at": "2026-09-04T05:07:18.503060",
+    "quality_gate": {
+      "quality_grade": "DEGRADED",
+      "reliability_status": "REDUCED_RELIABILITY",
+      "quality_score_pct": 46,
+      "gating_factors": [
+        "Moderate resolution (640\u00d71138): acceptable for perceptual hashing and OCR, reduced sensitivity for DCT analysis.",
+        "Heavy compression blocking (block ratio 2.55): DCT structure dominated by coarse quantization grid."
+      ],
+      "impact_summary": "Media exhibits significant compression or resolution degradation. Sensor-noise and high-frequency signals carry reduced confidence; perceptual hashing and recapture signals remain resilient.",
+      "metrics": {
+        "width": 640,
+        "height": 1138,
+        "megapixels": 0.728,
+        "sharpness_laplacian": 290.7,
+        "mean_luminance": 128.31,
+        "contrast_std": 64.82,
+        "dynamic_range": 197.0,
+        "underexposed_pct": 0.0,
+        "overexposed_pct": 0.0,
+        "blockiness_ratio": 2.554,
+        "noise_floor": 0.0,
+        "frames_evaluated": 16
+      }
+    },
+    "signals": [
+      {
+        "key": "recompression",
+        "name": "Re-compression history",
+        "result": "No indicator",
+        "strength": "Counter-indicator",
+        "score": 13.49,
+        "weight": 1.0,
+        "direction": "supports",
+        "measurement": {
+          "error_minimum_quality": 95,
+          "mse_by_quality": {
+            "50": 65.765,
+            "55": 64.096,
+            "60": 59.331,
+            "65": 55.566,
+            "70": 52.855,
+            "75": 47.149,
+            "80": 43.759,
+            "85": 41.172,
+            "90": 38.122,
+            "95": 36.186
+          },
+          "normalised_dip": 0.4498
+        },
+        "method": "JPEG-ghost sweep: re-encode q50\u2013q95, locate MSE minimum",
+        "note": "Locates the JPEG quality at which reconstruction error is minimised. A minimum well below q95 indicates the content was compressed before this copy was made."
+      },
+      {
+        "key": "dct_benford",
+        "name": "DCT first-digit distribution",
+        "result": "No indicator",
+        "strength": "Counter-indicator",
+        "score": 11.08,
+        "weight": 1.0,
+        "direction": "supports",
+        "measurement": {
+          "chi_square_distance": 0.02868,
+          "observed_first_digit": [
+            0.3731,
+            0.1686,
+            0.1165,
+            0.0897,
+            0.0674,
+            0.0579,
+            0.0557,
+            0.0361,
+            0.035
+          ],
+          "benford_expected": [
+            0.301,
+            0.1761,
+            0.1249,
+            0.0969,
+            0.0792,
+            0.0669,
+            0.058,
+            0.0512,
+            0.0458
+          ],
+          "ac_samples": 31924
+        },
+        "method": "8\u00d78 block DCT, AC first-digit distribution, \u03c7\u00b2 vs Benford",
+        "note": "Natural, singly-compressed imagery follows Benford's law closely. Larger \u03c7\u00b2 distance indicates processing history or synthesis."
+      },
+      {
+        "key": "noise_residual",
+        "name": "Sensor-noise residual",
+        "result": "Weak indicator",
+        "strength": "Weak",
+        "score": 44.52,
+        "weight": 0.9,
+        "direction": "supports",
+        "measurement": {
+          "residual_std": 2.084,
+          "tile_std_spread": 0.3899,
+          "uniformity": 0.8129
+        },
+        "method": "median-filter residual: std + inter-tile uniformity (OpenCV)",
+        "note": "Camera capture leaves per-pixel sensor noise. Low and spatially uniform residual is consistent with smoothing, upscaling or synthesis \u2014 but also with heavy compression."
+      },
+      {
+        "key": "high_freq_energy",
+        "name": "High-frequency energy",
+        "result": "No indicator",
+        "strength": "Counter-indicator",
+        "score": 0.0,
+        "weight": 0.9,
+        "direction": "supports",
+        "measurement": {
+          "high_freq_fraction": 0.169782,
+          "mid_freq_fraction": 0.363099
+        },
+        "method": "2-D FFT radial energy: fraction beyond 0.55\u00b7r_max",
+        "note": "Upscaled or generated content is typically deficient in high spatial frequency relative to native capture at the same resolution."
+      },
+      {
+        "key": "blockiness",
+        "name": "Compression blockiness",
+        "result": "Consistent with manipulation",
+        "strength": "Strong",
+        "score": 100.0,
+        "weight": 0.6,
+        "direction": "supports",
+        "measurement": {
+          "grid_energy_ratio": 2.3759,
+          "on_grid_x": 5.0682,
+          "off_grid_x": 1.3583
+        },
+        "method": "8-px grid boundary gradient energy vs off-grid",
+        "note": "Measures energy on the 8-pixel JPEG grid. Elevated values indicate strong or repeated compression rather than manipulation on its own."
+      },
+      {
+        "key": "temporal_continuity",
+        "name": "Temporal continuity",
+        "result": "Discontinuities observed",
+        "strength": "Moderate",
+        "score": 49.61,
+        "weight": 0.8,
+        "direction": "supports",
+        "measurement": {
+          "mean_absdiff": 2.582,
+          "std_absdiff": 1.5289,
+          "coefficient_of_variation": 0.5922,
+          "discontinuity_spikes": 1,
+          "pairs": 15
+        },
+        "method": "mean |\u0394| between consecutive sampled keyframes; CV + spike count",
+        "note": "Consistency of change between sampled keyframes. A low value is a counter-indicator: it does not corroborate manipulation."
+      },
+      {
+        "key": "metadata_coherence",
+        "name": "Metadata & encoder coherence",
+        "result": "Inconsistencies observed",
+        "strength": "Moderate",
+        "score": 50.0,
+        "weight": 0.7,
+        "direction": "supports",
+        "measurement": {
+          "observations": [
+            "Container encoder tag: Lavc63.1.101 libx264",
+            "Encoder is a transcoding library, not a capture device",
+            "No capture-device tags in container",
+            "Bits per pixel per frame: 0.1227"
+          ],
+          "exif_keys": []
+        },
+        "method": "container/EXIF structural coherence checks",
+        "note": "Structural observations from the container/EXIF. Missing metadata is recorded as an absence and is never scored as proof of manipulation."
+      },
+      {
+        "key": "neural_detector",
+        "name": "AI-synthetic image signal",
+        "result": "Low synthetic-image signal",
+        "strength": "Weak",
+        "score": 32.09,
+        "weight": 1.2,
+        "direction": "supports",
+        "measurement": {
+          "model": "AI-image-detector (Swin-ViT)",
+          "model_version": "1.0",
+          "median_score": 0.3209,
+          "mean_score": 0.3021,
+          "max_score": 0.3712,
+          "trimmed_mean": 0.306,
+          "top_k_mean": 0.3524,
+          "frames_analysed": 8,
+          "suspicious_frames": 0,
+          "assessment": "LOW",
+          "device": "mps",
+          "inference_ms": 494
+        },
+        "method": "Frame-level AI-synthetic image signal (AI-image-detector (Swin-ViT)); median of per-frame model scores",
+        "note": "Model AI-synthetic score: 32.09%. Real neural model inference (not fabricated). Decision-support signal only: does not by itself establish authenticity or manipulation. Model is designed primarily for artistic AI imagery and is not a deepfake photo detector."
+      },
+      {
+        "key": "provenance",
+        "name": "Provenance (C2PA / Content Credentials)",
+        "result": "No C2PA manifest found",
+        "strength": "Not found",
+        "score": null,
+        "weight": 0.0,
+        "direction": "neutral",
+        "measurement": {
+          "markers": []
+        },
+        "method": "byte-level JUMBF/C2PA marker scan",
+        "note": "No C2PA / JUMBF provenance manifest present in container."
+      },
+      {
+        "key": "audio_silence_gating",
+        "name": "Audio silence boundary gating",
+        "result": "Silence fraction 0.0% (0 hard cutoffs)",
+        "strength": "Counter-indicator",
+        "score": 0.0,
+        "weight": 0.8,
+        "direction": "neutral",
+        "measurement": {
+          "silence_fraction": 0.0,
+          "hard_gate_transitions": 0
+        },
+        "method": "Hard gating & energy thresholding",
+        "note": "Unnatural zero-energy gating or sudden amplitude cutoffs can indicate splicing or synthetic vocoding."
+      },
+      {
+        "key": "audio_spectral_flatness",
+        "name": "Audio spectral flatness (Wiener entropy)",
+        "result": "Mean flatness 0.0000",
+        "strength": "Counter-indicator",
+        "score": 0.0,
+        "weight": 0.9,
+        "direction": "neutral",
+        "measurement": {
+          "spectral_flatness": 0.0
+        },
+        "method": "Geometric mean vs arithmetic mean of power spectrum",
+        "note": "Abnormally flat spectra can indicate vocoded speech or synthetic noise generation."
+      },
+      {
+        "key": "audio_pitch_jitter",
+        "name": "Vocal pitch micro-tremor & jitter",
+        "result": "Jitter 0.00% (F0 mean: 262.3 Hz)",
+        "strength": "Moderate",
+        "score": 60.0,
+        "weight": 0.9,
+        "direction": "supporting",
+        "measurement": {
+          "pitch_jitter_pct": 0.0,
+          "mean_f0_hz": 262.3
+        },
+        "method": "Autocorrelation pitch tracking & cycle-to-cycle perturbation",
+        "note": "Synthetic speech vocoders often display unnaturally steady pitch periods without natural human vocal tremor."
+      },
+      {
+        "key": "audio_clipping",
+        "name": "Digital rail clipping ratio",
+        "result": "Clipping ratio: 0.00%",
+        "strength": "Counter-indicator",
+        "score": 0.0,
+        "weight": 0.7,
+        "direction": "neutral",
+        "measurement": {
+          "clipping_ratio": 0.0
+        },
+        "method": "Rail detection at \u00b10.999 full-scale",
+        "note": "High clipping indicates non-linear distortion, aggressive gain, or synthetic sound generation overdrive."
+      }
+    ],
+    "container": {
+      "width": 720,
+      "height": 1280,
+      "duration_s": 4.0,
+      "fps": 30.0,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "container_format": "mov,mp4,m4a,3gp,3g2,mj2",
+      "encoder_tag": "Lavc63.1.101 libx264",
+      "has_audio": true
+    },
+    "provenance": {
+      "c2pa_present": false,
+      "note": "No C2PA / JUMBF provenance manifest present in container.",
+      "exif_fields": 0,
+      "exif": {}
+    },
+    "supporting": [
+      "Compression blockiness",
+      "Temporal continuity",
+      "Metadata & encoder coherence",
+      "Vocal pitch micro-tremor & jitter"
+    ],
+    "counter": [
+      "Re-compression history",
+      "DCT first-digit distribution",
+      "High-frequency energy",
+      "Audio silence boundary gating",
+      "Audio spectral flatness (Wiener entropy)",
+      "Digital rail clipping ratio"
+    ],
+    "unmeasured": [
+      "Provenance (C2PA / Content Credentials)"
+    ],
+    "limitations": [
+      "No EXIF metadata was present in this evidence. Absence of metadata is not evidence of manipulation.",
+      "No C2PA Content Credentials manifest was found. Most platforms and messaging applications strip provenance metadata on re-upload.",
+      "No qualifying near-duplicate was found in the reference corpus, so the origin of this media cannot be established from available data.",
+      "No reliable source handle was recovered from interface regions.",
+      "No laundering stress test has been executed for this evidence, so no observed reliability boundary can be stated.",
+      "The assessment is produced by 'heuristic-forensic-ensemble-v1 + neural-vit-v1' \u2014 a weighted ensemble of classical forensic signals augmented by an AI-synthetic image signal (AI-image-detector (Swin-ViT)). Artistic images (VQGAN+CLIP era, Oct 2022). Not trained on modern diffusion generators (SDXL, Midjourney v5+, DALL-E 3, Flux) or deepfake face-swaps.",
+      "SROT does not identify persons, resolve identifier ownership, or determine legal admissibility."
+    ]
+  },
+  "origin": {
+    "evidence_ref": "EV-CASE-2026-015-001",
+    "corpus_size": 5,
+    "matches": [],
+    "match_count": 0,
+    "earliest": null,
+    "propagation_span_days": null,
+    "max_similarity": null,
+    "method": "Perceptual hashing (pHash 64-bit) over sampled keyframes",
+    "threshold": "multi-view Hamming distance \u2264 12 of 64 bits, corroborated by \u2265 2 independently matching frames",
+    "threshold_calibration": {
+      "method": "minimum multi-view 64-bit pHash Hamming distance, corroborated across independently matching frames",
+      "threshold_bits": 12,
+      "min_corroborating_frames": 2,
+      "true_derivative_distance_bits": [
+        8,
+        10
+      ],
+      "true_derivative_corroborating_frames": [
+        4,
+        5
+      ],
+      "unrelated_control_distance_bits": [
+        14,
+        32
+      ],
+      "unrelated_control_corroborating_frames": [
+        0,
+        0
+      ],
+      "samples": {
+        "true_derivatives": 5,
+        "unrelated_controls": 9,
+        "frames_per_clip": 8
+      },
+      "note": "Calibrated on synthetic demonstration media only. Distance alone does not separate the populations \u2014 one degenerate control reaches 14 bits on a single frame pair but corroborates on none. Re-calibration is required before use on operational material."
+    },
+    "established": false,
+    "empty_reason": "No matching reference found in the available corpus.",
+    "disclaimer": "Earliest known/reference match within the available corpus. This is not a claim of first publication anywhere, and SROT never describes a match as 'original source'.",
+    "attribution_ceiling": [
+      {
+        "step": 1,
+        "what": "Media file ingested, hashed and analysed",
+        "actor": "SROT",
+        "mode": "automatic",
+        "established": true,
+        "detail": "SHA-256 0eb715a2fddf55b9\u2026 computed at ingest."
+      },
+      {
+        "step": 2,
+        "what": "Near-duplicate copies located by perceptual fingerprint",
+        "actor": "SROT",
+        "mode": "automatic",
+        "established": false,
+        "detail": "No qualifying match in the searched corpus."
+      },
+      {
+        "step": 3,
+        "what": "Earliest known copy within the searched corpus",
+        "actor": "SROT",
+        "mode": "automatic (corpus-limited)",
+        "established": false,
+        "detail": "Origin cannot be established from the available corpus."
+      },
+      {
+        "step": 4,
+        "what": "Account handle visible in the media",
+        "actor": "SROT",
+        "mode": "automatic (OCR, requires verification)",
+        "established": false,
+        "detail": "No reliable source handle recovered from interface regions."
+      },
+      {
+        "step": 5,
+        "what": "Subscriber details behind an account",
+        "actor": "Police",
+        "mode": "legal request required",
+        "established": false,
+        "detail": "Requires an authorised request to the platform. SROT cannot perform this."
+      },
+      {
+        "step": 6,
+        "what": "IP / ISP subscriber records",
+        "actor": "Police",
+        "mode": "legal request required",
+        "established": false,
+        "detail": "Requires an authorised request to the service provider."
+      },
+      {
+        "step": 7,
+        "what": "Real-world identity of a person",
+        "actor": "Human investigation",
+        "mode": "outside SROT",
+        "established": false,
+        "detail": "SROT does not identify, score or classify any person."
+      }
+    ]
+  },
+  "graph": {
+    "nodes": [
+      {
+        "key": "ev:EV-CASE-2026-015-001",
+        "kind": "evidence",
+        "label": "EV-CASE-2026-015-001",
+        "sublabel": "Instagram_Travel_Nature_Demo.mp4",
+        "frame_number": null,
+        "extraction_method": "case ingest",
+        "confidence": 1.0,
+        "is_synthetic": false,
+        "observed_at": "2026-09-04T05:07:01.738999",
+        "attrs": {
+          "sha256": "0eb715a2fddf55b988c494be9fccd63f825c4249b57bcdade726f7f68a8981f8",
+          "size_bytes": 1696575,
+          "media_kind": "video",
+          "mime": "video/mp4"
+        },
+        "degree": 7,
+        "position": {
+          "x": 524,
+          "y": 0
+        }
+      },
+      {
+        "key": "case:CASE-2026-015",
+        "kind": "case",
+        "label": "CASE-2026-015",
+        "sublabel": "Forensic Intake \u00b7 Instagram Travel Nature Video",
+        "frame_number": null,
+        "extraction_method": "case record (registered by the investigating officer)",
+        "confidence": 1.0,
+        "is_synthetic": false,
+        "observed_at": "2026-09-04T05:07:01.725825",
+        "attrs": {},
+        "degree": 1,
+        "position": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "key": "sha256:0eb715a2fddf",
+        "kind": "hash",
+        "label": "SHA-256: 0eb715a2fd\u2026",
+        "sublabel": "Cryptographic Digest",
+        "frame_number": null,
+        "extraction_method": "SHA-256 Digest (computed at ingest)",
+        "confidence": 1.0,
+        "is_synthetic": false,
+        "observed_at": "2026-09-04T05:07:01.738999",
+        "attrs": {
+          "full_hash": "0eb715a2fddf55b988c494be9fccd63f825c4249b57bcdade726f7f68a8981f8",
+          "algorithm": "SHA-256",
+          "size_bytes": 1696575
+        },
+        "degree": 1,
+        "position": {
+          "x": 262,
+          "y": -52
+        }
+      },
+      {
+        "key": "analysis:34",
+        "kind": "analysis",
+        "label": "Assessment: Inconclusive",
+        "sublabel": "Score 28.1/100",
+        "frame_number": null,
+        "extraction_method": "heuristic-forensic-ensemble-v1 + neural-vit-v1",
+        "confidence": 1.0,
+        "is_synthetic": false,
+        "observed_at": "2026-09-04T05:07:01.742137",
+        "attrs": {
+          "assessment": "Inconclusive",
+          "confidence_band": "LOW",
+          "score": 28.06,
+          "backend": "heuristic-forensic-ensemble-v1 + neural-vit-v1"
+        },
+        "degree": 1,
+        "position": {
+          "x": 786,
+          "y": 0
+        }
+      },
+      {
+        "key": "frame:EV-CASE-2026-015-001:0",
+        "kind": "frame",
+        "label": "Frame 0",
+        "sublabel": "t = 0.00s",
+        "frame_number": 0,
+        "extraction_method": "FFmpeg keyframe sampling",
+        "confidence": 1.0,
+        "is_synthetic": false,
+        "observed_at": null,
+        "attrs": {
+          "anomaly_score": 38.94
+        },
+        "degree": 2,
+        "position": {
+          "x": 1048,
+          "y": -104
+        }
+      },
+      {
+        "key": "ocr:EV-CASE-2026-015-001:0",
+        "kind": "extraction",
+        "label": "OCR extraction",
+        "sublabel": "Frame 0",
+        "frame_number": 0,
+        "extraction_method": "Tesseract OCR",
+        "confidence": 1.0,
+        "is_synthetic": false,
+        "observed_at": null,
+        "attrs": {},
+        "degree": 2,
+        "position": {
+          "x": 1310,
+          "y": -104
+        }
+      },
+      {
+        "key": "frame:EV-CASE-2026-015-001:2",
+        "kind": "frame",
+        "label": "Frame 15",
+        "sublabel": "t = 0.50s",
+        "frame_number": 15,
+        "extraction_method": "FFmpeg keyframe sampling",
+        "confidence": 1.0,
+        "is_synthetic": false,
+        "observed_at": null,
+        "attrs": {
+          "anomaly_score": 38.2
+        },
+        "degree": 2,
+        "position": {
+          "x": 1048,
+          "y": 0
+        }
+      },
+      {
+        "key": "ocr:EV-CASE-2026-015-001:2",
+        "kind": "extraction",
+        "label": "OCR extraction",
+        "sublabel": "Frame 15",
+        "frame_number": 15,
+        "extraction_method": "Tesseract OCR",
+        "confidence": 1.0,
+        "is_synthetic": false,
+        "observed_at": null,
+        "attrs": {},
+        "degree": 2,
+        "position": {
+          "x": 1310,
+          "y": 0
+        }
+      },
+      {
+        "key": "frame:EV-CASE-2026-015-001:4",
+        "kind": "frame",
+        "label": "Frame 30",
+        "sublabel": "t = 1.00s",
+        "frame_number": 30,
+        "extraction_method": "FFmpeg keyframe sampling",
+        "confidence": 1.0,
+        "is_synthetic": false,
+        "observed_at": null,
+        "attrs": {
+          "anomaly_score": 39.2
+        },
+        "degree": 2,
+        "position": {
+          "x": 1048,
+          "y": 104
+        }
+      },
+      {
+        "key": "ocr:EV-CASE-2026-015-001:4",
+        "kind": "extraction",
+        "label": "OCR extraction",
+        "sublabel": "Frame 30",
+        "frame_number": 30,
+        "extraction_method": "Tesseract OCR",
+        "confidence": 1.0,
+        "is_synthetic": false,
+        "observed_at": null,
+        "attrs": {},
+        "degree": 2,
+        "position": {
+          "x": 1310,
+          "y": 104
+        }
+      },
+      {
+        "key": "ent:TIME:9:09",
+        "kind": "identifier",
+        "label": "9:09",
+        "sublabel": "Time",
+        "frame_number": 0,
+        "extraction_method": "tesseract-ocr + pattern match",
+        "confidence": 0.46,
+        "is_synthetic": false,
+        "observed_at": null,
+        "attrs": {
+          "bbox": [
+            3,
+            6,
+            56,
+            7
+          ],
+          "language": "Digits (no script)",
+          "ocr_confidence": 46.0,
+          "region": "full-frame",
+          "frame_index": 0,
+          "timestamp_s": 0.0
+        },
+        "degree": 1,
+        "position": {
+          "x": 1572,
+          "y": -104
+        }
+      },
+      {
+        "key": "ent:TIME:00:00",
+        "kind": "identifier",
+        "label": "00:00",
+        "sublabel": "Time",
+        "frame_number": 15,
+        "extraction_method": "tesseract-ocr + pattern match",
+        "confidence": 0.69,
+        "is_synthetic": false,
+        "observed_at": null,
+        "attrs": {
+          "bbox": [
+            3,
+            6,
+            56,
+            7
+          ],
+          "language": "Digits (no script)",
+          "ocr_confidence": 69.0,
+          "region": "full-frame",
+          "frame_index": 2,
+          "timestamp_s": 0.5
+        },
+        "degree": 1,
+        "position": {
+          "x": 1572,
+          "y": 0
+        }
+      },
+      {
+        "key": "ent:TIME:09:09",
+        "kind": "identifier",
+        "label": "09:09",
+        "sublabel": "Time",
+        "frame_number": 30,
+        "extraction_method": "tesseract-ocr + pattern match",
+        "confidence": 0.48,
+        "is_synthetic": false,
+        "observed_at": null,
+        "attrs": {
+          "bbox": [
+            3,
+            5,
+            54,
+            8
+          ],
+          "language": "Digits (no script)",
+          "ocr_confidence": 48.0,
+          "region": "full-frame",
+          "frame_index": 4,
+          "timestamp_s": 1.0
+        },
+        "degree": 1,
+        "position": {
+          "x": 1572,
+          "y": 104
+        }
+      },
+      {
+        "key": "info:EV-CASE-2026-015-001:standalone",
+        "kind": "origin",
+        "label": "No Corroborated External Link",
+        "sublabel": "Standalone media evidence",
+        "frame_number": null,
+        "extraction_method": "corpus & cross-case search",
+        "confidence": 1.0,
+        "is_synthetic": false,
+        "observed_at": "2026-09-04T05:07:01.738999",
+        "attrs": {
+          "note": "No qualifying reference match or cross-case campaign link was detected."
+        },
+        "degree": 1,
+        "position": {
+          "x": 262,
+          "y": 52
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e187",
+        "source": "ev:EV-CASE-2026-015-001",
+        "target": "case:CASE-2026-015",
+        "relation": "registered in",
+        "reason": "Evidence registered under case CASE-2026-015.",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": 1.0,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e188",
+        "source": "ev:EV-CASE-2026-015-001",
+        "target": "sha256:0eb715a2fddf",
+        "relation": "has hash",
+        "reason": "SHA-256 digest computed at ingest: 0eb715a2fddf55b988c494be9fccd63f825c4249b57bcdade726f7f68a8981f8",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": 1.0,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e189",
+        "source": "ev:EV-CASE-2026-015-001",
+        "target": "analysis:34",
+        "relation": "evaluated as",
+        "reason": "Pipeline analysis produced assessment 'Inconclusive'",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": 1.0,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e190",
+        "source": "ev:EV-CASE-2026-015-001",
+        "target": "frame:EV-CASE-2026-015-001:0",
+        "relation": "keyframe",
+        "reason": "Keyframe sampled from EV-CASE-2026-015-001 at t=0.00s.",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": null,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e191",
+        "source": "frame:EV-CASE-2026-015-001:0",
+        "target": "ocr:EV-CASE-2026-015-001:0",
+        "relation": "OCR applied",
+        "reason": "Tesseract OCR run over this frame; words with confidence \u2265 40 retained.",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": null,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e192",
+        "source": "ev:EV-CASE-2026-015-001",
+        "target": "frame:EV-CASE-2026-015-001:2",
+        "relation": "keyframe",
+        "reason": "Keyframe sampled from EV-CASE-2026-015-001 at t=0.50s.",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": null,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e193",
+        "source": "frame:EV-CASE-2026-015-001:2",
+        "target": "ocr:EV-CASE-2026-015-001:2",
+        "relation": "OCR applied",
+        "reason": "Tesseract OCR run over this frame; words with confidence \u2265 40 retained.",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": null,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e194",
+        "source": "ev:EV-CASE-2026-015-001",
+        "target": "frame:EV-CASE-2026-015-001:4",
+        "relation": "keyframe",
+        "reason": "Keyframe sampled from EV-CASE-2026-015-001 at t=1.00s.",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": null,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e195",
+        "source": "frame:EV-CASE-2026-015-001:4",
+        "target": "ocr:EV-CASE-2026-015-001:4",
+        "relation": "OCR applied",
+        "reason": "Tesseract OCR run over this frame; words with confidence \u2265 40 retained.",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": null,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e196",
+        "source": "ocr:EV-CASE-2026-015-001:0",
+        "target": "ent:TIME:9:09",
+        "relation": "identifier parsed",
+        "reason": "'9:09' matched the TIME pattern in OCR output (OCR confidence 46.0).",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": 0.46,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e197",
+        "source": "ocr:EV-CASE-2026-015-001:2",
+        "target": "ent:TIME:00:00",
+        "relation": "identifier parsed",
+        "reason": "'00:00' matched the TIME pattern in OCR output (OCR confidence 69.0).",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": 0.69,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e198",
+        "source": "ocr:EV-CASE-2026-015-001:4",
+        "target": "ent:TIME:09:09",
+        "relation": "identifier parsed",
+        "reason": "'09:09' matched the TIME pattern in OCR output (OCR confidence 48.0).",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": 0.48,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      },
+      {
+        "id": "e199",
+        "source": "ev:EV-CASE-2026-015-001",
+        "target": "info:EV-CASE-2026-015-001:standalone",
+        "relation": "corpus search",
+        "reason": "Searched reference corpus: Hamming distance > 14/64 bits across all indexed items. No corroborated relationship found.",
+        "observation": "DIRECTLY_OBSERVED",
+        "confidence": 1.0,
+        "evidence_ref": "EV-CASE-2026-015-001"
+      }
+    ],
+    "stats": {
+      "nodes": 14,
+      "edges": 13,
+      "directly_observed": 13,
+      "inferred": 0
+    }
+  },
+  "provenance_trace": {
+    "evidence_ref": "EV-CASE-2026-015-001",
+    "case_ref": "CASE-2026-015",
+    "filename": "Instagram_Travel_Nature_Demo.mp4",
+    "sha256": "0eb715a2fddf55b988c494be9fccd63f825c4249b57bcdade726f7f68a8981f8",
+    "media_kind": "video",
+    "stages": [
+      {
+        "stage": "UPLOAD",
+        "name": "Evidence File Intake",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "Uploaded 'Instagram_Travel_Nature_Demo.mp4' (1656.8 KB)",
+        "details": {
+          "filename": "Instagram_Travel_Nature_Demo.mp4",
+          "size_bytes": 1696575,
+          "ingested_at": "2026-09-04T05:07:01.738999",
+          "stored_path": "/Users/princemahto/Downloads/SROT/data/evidence/CASE-2026-015/EV-CASE-2026-015-001__Instagram_Travel_Nature_Demo.mp4"
+        }
+      },
+      {
+        "stage": "EVIDENCE_CREATED",
+        "name": "Evidence Reference Allocation",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "Allocated reference EV-CASE-2026-015-001 (Case: CASE-2026-015)",
+        "details": {
+          "evidence_ref": "EV-CASE-2026-015-001",
+          "case_ref": "CASE-2026-015",
+          "case_id": 15,
+          "evidence_id": 34
+        }
+      },
+      {
+        "stage": "HASH",
+        "name": "Cryptographic SHA-256 Digest",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "0eb715a2fddf55b9...",
+        "details": {
+          "sha256": "0eb715a2fddf55b988c494be9fccd63f825c4249b57bcdade726f7f68a8981f8",
+          "algorithm": "SHA-256 (NIST FIPS 180-4)",
+          "immutable": true
+        }
+      },
+      {
+        "stage": "MEDIA_TYPE",
+        "name": "Container & Codec Identification",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "VIDEO (mov,mp4,m4a,3gp,3g2,mj2, video=h264, audio=aac)",
+        "details": {
+          "media_kind": "video",
+          "container_format": "mov,mp4,m4a,3gp,3g2,mj2",
+          "video_codec": "h264",
+          "audio_codec": "aac",
+          "has_audio": true
+        }
+      },
+      {
+        "stage": "FRAMES_AUDIO_EXTRACTED",
+        "name": "Keyframe / PCM Audio Track Extraction",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "16 keyframes extracted (4.0s duration, 30.0 fps)",
+        "details": {
+          "frames_sampled": 16,
+          "duration_s": 4.0,
+          "fps": 30.0,
+          "dimensions": "720x1280"
+        }
+      },
+      {
+        "stage": "QUALITY",
+        "name": "Spatial & Encoding Quality Metrics",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "Analyzed container structural coherence (13 forensic signals)",
+        "details": {
+          "quality_observation": {
+            "observations": [
+              "Container encoder tag: Lavc63.1.101 libx264",
+              "Encoder is a transcoding library, not a capture device",
+              "No capture-device tags in container",
+              "Bits per pixel per frame: 0.1227"
+            ],
+            "exif_keys": []
+          },
+          "bitrate": 3393150
+        }
+      },
+      {
+        "stage": "CLASSICAL_SIGNALS",
+        "name": "Classical Forensic Ensemble (DCT, ELA, Noise, FFT)",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "11 classical signals evaluated (aggregate score: 28.06/100)",
+        "details": {
+          "signal_keys": [
+            "recompression",
+            "dct_benford",
+            "noise_residual",
+            "high_freq_energy",
+            "blockiness",
+            "temporal_continuity",
+            "metadata_coherence",
+            "audio_silence_gating",
+            "audio_spectral_flatness",
+            "audio_pitch_jitter",
+            "audio_clipping"
+          ],
+          "aggregate_score": 28.06,
+          "confidence_band": "LOW"
+        }
+      },
+      {
+        "stage": "NEURAL_SCORE",
+        "name": "Local Neural AI-Synthetic ViT Model",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "ViT detector model score: 32.09% across 8 frames",
+        "details": {
+          "model_score": 32.09,
+          "frames_evaluated": 8,
+          "model_name": "AI-image-detector (Swin-ViT)"
+        }
+      },
+      {
+        "stage": "RECAPTURE",
+        "name": "Screen Recapture & Moire Analysis",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "Likelihood: LOW (score 15.0/100)",
+        "details": {
+          "likelihood": "LOW",
+          "score": 15.0,
+          "handles_recovered": 0
+        }
+      },
+      {
+        "stage": "OCR",
+        "name": "Optical Character Recognition (OCR) & Entity Extraction",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "3 entities extracted from uploaded media",
+        "details": {
+          "entity_count": 3,
+          "sample_entities": [
+            "TIME: 9:09",
+            "TIME: 00:00",
+            "TIME: 09:09"
+          ]
+        }
+      },
+      {
+        "stage": "C2PA",
+        "name": "C2PA / Content Credentials Provenance Manifest",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "No C2PA manifest found in container",
+        "details": {
+          "present": false,
+          "note": "No C2PA / JUMBF provenance manifest present in container."
+        }
+      },
+      {
+        "stage": "ORIGIN_MATCH",
+        "name": "Perceptual Hash Corpus Matching",
+        "source": "REFERENCE_CORPUS",
+        "status": "COMPLETED",
+        "value": "No matching reference found in the available corpus",
+        "details": {
+          "matches_found": 0,
+          "reference_corpus_size": 5,
+          "attribution_status": "UNATTRIBUTED"
+        }
+      },
+      {
+        "stage": "STRESS_TEST",
+        "name": "Laundering Perturbation & Stress Testing",
+        "source": "NOT_AVAILABLE",
+        "status": "NOT_AVAILABLE",
+        "value": "Stress test not yet triggered for this evidence",
+        "details": {
+          "status": "NOT_RUN",
+          "boundary": null
+        }
+      },
+      {
+        "stage": "CROSS_SIGNAL_ASSESSMENT",
+        "name": "Cross-Signal Synthesis & Dissent Evaluation",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "Evidence State: INSUFFICIENT (Agreement: NEUTRAL)",
+        "details": {
+          "evidence_state": null,
+          "signal_agreement": null,
+          "corroboration_score": null,
+          "limitations_noted": 0
+        }
+      },
+      {
+        "stage": "FINAL_EVIDENCE_STATE",
+        "name": "Final Forensic Conclusion & Dossier Synthesis",
+        "source": "NEW_FILE",
+        "status": "COMPLETED",
+        "value": "Inconclusive (Confidence band: LOW)",
+        "details": {
+          "assessment": "Inconclusive",
+          "confidence_band": "LOW",
+          "aggregate_score": 28.06,
+          "evidence_ref": "EV-CASE-2026-015-001",
+          "dissent": false
+        }
+      }
+    ],
+    "all_stages_isolated": true
+  },
+  "cross_signal_assessment": {
+    "synthesis_headline": "Standard Media Distribution \u2014 Baseline Forensic Profile",
+    "synthesis_narrative": "No strong synthetic-image, manipulation, or screen-recapture anomalies were identified across the evaluated forensic signals. Media exhibits a baseline distribution profile consistent with authentic forwarded content.",
+    "evidence_state": "CONSISTENT",
+    "evidence_state_rationale": "All physical, compression, and neural measurements fall within baseline parameters for natural forwarded media.",
+    "signal_consistency": "STRONG_CONSISTENCY",
+    "score_semantics": "MODEL_SCORE",
+    "score_semantics_note": "Model score, not a calibrated probability.",
+    "evidence_matrix": [
+      {
+        "source": "Cryptographic Integrity",
+        "measurement": "SHA-256 Digest & Hash Chain",
+        "observation": "Immutable SHA-256 computed on ingest: 0eb715a2fddf\u2026 (1,696,575 bytes). Audit chain verified.",
+        "strength": "STRONG",
+        "status": "VERIFIED",
+        "corroboration": "Matches byte-level file store; recorded in tamper-evident hash ledger.",
+        "limitation": "Cryptographic hashing establishes file immutability from point of intake; it cannot determine camera origin or real-world authenticity."
+      },
+      {
+        "source": "Content Credentials (C2PA)",
+        "measurement": "Cryptographic Provenance Manifest",
+        "observation": "No C2PA provenance manifest found in media container.",
+        "strength": "LIMITED",
+        "status": "NOT_DETECTED",
+        "corroboration": "Consistent with forwarded/re-encoded social media lifecycle.",
+        "limitation": "Absence of C2PA is standard across messaging platforms and does not by itself indicate manipulation."
+      },
+      {
+        "source": "Metadata & Header Coherence",
+        "measurement": "EXIF / Container Header Analysis",
+        "observation": "Zero EXIF camera metadata fields present; metadata stripped by transmission.",
+        "strength": "MODERATE",
+        "status": "INDICATIVE",
+        "corroboration": "Corroborates messaging app forwarding or screen-recording acquisition.",
+        "limitation": "Metadata stripping is standard for privacy on WhatsApp, Telegram, and Twitter; non-forensic on its own."
+      },
+      {
+        "source": "Image Quality Gating",
+        "measurement": "Resolution, Sharpness & Dynamic Range Gating",
+        "observation": "Quality Grade: DEGRADED (46%). Reliability Gate: REDUCED_RELIABILITY.",
+        "strength": "BASELINE",
+        "status": "REDUCED_RELIABILITY",
+        "corroboration": "Calibrates the evidentiary confidence of high-frequency and sensor-noise measurements.",
+        "limitation": "Evaluates physical signal suitability, not semantic content."
+      },
+      {
+        "source": "Sensor Noise Residual (PRNU)",
+        "measurement": "High-Pass Wavelet Residual Energy",
+        "observation": "Sensor noise residual score: 44.5% (Weak indicator).",
+        "strength": "MODERATE",
+        "status": "ANOMALOUS",
+        "corroboration": "Cross-referenced with DCT and Neural signal.",
+        "limitation": "Sensor noise patterns can be attenuated by downscaling or heavy lossy re-compression."
+      },
+      {
+        "source": "Compression Physics (DCT / Benford)",
+        "measurement": "Discrete Cosine Transform First-Digit Conformance",
+        "observation": "DCT Benford score: 11.1% (No indicator).",
+        "strength": "MODERATE",
+        "status": "CONSISTENT",
+        "corroboration": "Evaluates whether compression coefficients follow natural optical logarithmic decay.",
+        "limitation": "Multiple re-compressions can distort Benford's law distribution."
+      },
+      {
+        "source": "Display Recapture Forensics",
+        "measurement": "Letterbox, Static-Band Std-Dev & Moir\u00e9 Analysis",
+        "observation": "Recapture likelihood: LOW (15.0%).",
+        "strength": "MODERATE",
+        "status": "NOT_DETECTED",
+        "corroboration": "Corroborates UI origin and contextualizes elevated neural synthetic scores.",
+        "limitation": "Identifies secondary screen-capture containers; cannot determine the authenticity of content within the captured viewport without pixel signals."
+      },
+      {
+        "source": "AI-Synthetic Image Signal (Swin-ViT)",
+        "measurement": "Frame-Level Swin Transformer Inference (umm-maybe)",
+        "observation": "Model AI-synthetic score: 32.1% (Low synthetic-image signal).",
+        "strength": "MODERATE",
+        "status": "BASELINE",
+        "corroboration": "Evaluated alongside recapture and classical compression signals.",
+        "limitation": "Trained on artistic AI imagery (2022); elevated false-positive tendency on UI screenshots and screen recordings."
+      },
+      {
+        "source": "Propagation & Origin Trace",
+        "measurement": "Multi-View Perceptual Hashing (pHash/dHash/wHash)",
+        "observation": "No matching reference found in the available corpus (Hamming distance > 14/64 bits across all indexed items).",
+        "strength": "BASELINE",
+        "status": "NOT_DETECTED",
+        "corroboration": "Indicates this media is not a direct re-encode or visual derivative of items in the reference corpus.",
+        "limitation": "Corpus search is bounded by indexed reference items; does not assert absence from external un-indexed platforms."
+      }
+    ],
+    "corroborating_factors": [
+      "Complete absence of EXIF camera metadata is consistent with transmission across messaging platforms or screen-recording software."
+    ],
+    "dissenting_or_neutral_factors": [
+      "Image Quality Gate is REDUCED_RELIABILITY (Grade: DEGRADED): high-frequency and sensor-noise signal sensitivities are attenuated."
+    ],
+    "investigative_recommendations": [],
+    "quality_status": "REDUCED_RELIABILITY",
+    "total_signals_evaluated": 9
+  }
+}

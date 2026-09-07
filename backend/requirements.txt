@@ -1,0 +1,48 @@
+# SROT backend — pinned to the versions this build was tested against.
+# Everything runs locally. No package here calls out to a cloud inference service.
+
+fastapi==0.141.1
+uvicorn==0.46.0
+python-multipart==0.0.26
+SQLAlchemy==2.0.52
+pydantic==2.13.3
+
+# media + forensics
+opencv-python-headless==4.13.0.92
+numpy==2.4.4
+scipy==1.17.1
+Pillow==12.2.0
+ImageHash==4.3.2
+PyWavelets==1.9.0
+
+# OCR
+pytesseract==0.3.13
+
+# case assembly + documents
+networkx==3.6.1
+Jinja2==3.1.6
+weasyprint==69.0
+qrcode==8.2
+
+# test scripts only
+requests==2.33.1
+
+# neural AI-media detector (Phase 2)
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.30.0
+safetensors>=0.3.0
+
+# ── system packages (not installable with pip) ───────────────────────────────
+#   ffmpeg, ffprobe          frame sampling and stress-test variant generation
+#   tesseract-ocr            OCR engine
+#   tesseract-ocr-eng        English traineddata
+#   tesseract-ocr-hin        Hindi (Devanagari) traineddata
+#   tesseract-ocr-pan        Punjabi (Gurmukhi) traineddata
+#   fonts-dejavu-core        used by the seed script to render demonstration media
+#
+#   Debian/Ubuntu:
+#     sudo apt-get install -y ffmpeg tesseract-ocr tesseract-ocr-eng \
+#          tesseract-ocr-hin tesseract-ocr-pan fonts-dejavu-core \
+#          libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0
+#   (the last four are WeasyPrint's rendering dependencies)

@@ -1,0 +1,416 @@
+{
+  "umm-maybe/AI-image-detector": {
+    "model_id": "umm-maybe/AI-image-detector",
+    "load_ms": 3550,
+    "results": [
+      {
+        "name": "authentic_photo",
+        "category": "authentic",
+        "ai_score": 0.064,
+        "raw": {
+          "human": 0.936,
+          "artificial": 0.064
+        },
+        "inference_ms": 154,
+        "error": null
+      },
+      {
+        "name": "authentic_photo_jpeg30",
+        "category": "authentic+transform",
+        "ai_score": 0.0312,
+        "raw": {
+          "human": 0.9688,
+          "artificial": 0.0312
+        },
+        "inference_ms": 31,
+        "error": null
+      },
+      {
+        "name": "authentic_photo_small",
+        "category": "authentic+transform",
+        "ai_score": 0.2211,
+        "raw": {
+          "human": 0.7789,
+          "artificial": 0.2211
+        },
+        "inference_ms": 29,
+        "error": null
+      },
+      {
+        "name": "authentic_photo_crop50",
+        "category": "authentic+transform",
+        "ai_score": 0.1072,
+        "raw": {
+          "human": 0.8928,
+          "artificial": 0.1072
+        },
+        "inference_ms": 29,
+        "error": null
+      },
+      {
+        "name": "ai_art_synthetic",
+        "category": "ai-generated",
+        "ai_score": 0.8029,
+        "raw": {
+          "artificial": 0.8029,
+          "human": 0.1971
+        },
+        "inference_ms": 31,
+        "error": null
+      },
+      {
+        "name": "ai_art_jpeg30",
+        "category": "ai-generated+transform",
+        "ai_score": 0.8802,
+        "raw": {
+          "artificial": 0.8802,
+          "human": 0.1198
+        },
+        "inference_ms": 31,
+        "error": null
+      },
+      {
+        "name": "ai_art_small",
+        "category": "ai-generated+transform",
+        "ai_score": 0.8055,
+        "raw": {
+          "artificial": 0.8055,
+          "human": 0.1945
+        },
+        "inference_ms": 29,
+        "error": null
+      },
+      {
+        "name": "ai_art_crop50",
+        "category": "ai-generated+transform",
+        "ai_score": 0.8168,
+        "raw": {
+          "artificial": 0.8168,
+          "human": 0.1832
+        },
+        "inference_ms": 29,
+        "error": null
+      },
+      {
+        "name": "screenshot_ui",
+        "category": "screenshot",
+        "ai_score": 0.6843,
+        "raw": {
+          "artificial": 0.6843,
+          "human": 0.3157
+        },
+        "inference_ms": 29,
+        "error": null
+      },
+      {
+        "name": "screenshot_jpeg30",
+        "category": "screenshot+transform",
+        "ai_score": 0.6834,
+        "raw": {
+          "artificial": 0.6834,
+          "human": 0.3166
+        },
+        "inference_ms": 31,
+        "error": null
+      },
+      {
+        "name": "pure_noise",
+        "category": "edge-case",
+        "ai_score": 0.5517,
+        "raw": {
+          "artificial": 0.5517,
+          "human": 0.4483
+        },
+        "inference_ms": 31,
+        "error": null
+      },
+      {
+        "name": "solid_black",
+        "category": "edge-case",
+        "ai_score": 0.4396,
+        "raw": {
+          "human": 0.5604,
+          "artificial": 0.4396
+        },
+        "inference_ms": 29,
+        "error": null
+      }
+    ]
+  },
+  "Organika/sdxl-detector": {
+    "model_id": "Organika/sdxl-detector",
+    "load_ms": 3224,
+    "results": [
+      {
+        "name": "authentic_photo",
+        "category": "authentic",
+        "ai_score": 0.001,
+        "raw": {
+          "human": 0.999,
+          "artificial": 0.001
+        },
+        "inference_ms": 61,
+        "error": null
+      },
+      {
+        "name": "authentic_photo_jpeg30",
+        "category": "authentic+transform",
+        "ai_score": 0.2584,
+        "raw": {
+          "human": 0.7416,
+          "artificial": 0.2584
+        },
+        "inference_ms": 30,
+        "error": null
+      },
+      {
+        "name": "authentic_photo_small",
+        "category": "authentic+transform",
+        "ai_score": 0.0649,
+        "raw": {
+          "human": 0.9351,
+          "artificial": 0.0649
+        },
+        "inference_ms": 28,
+        "error": null
+      },
+      {
+        "name": "authentic_photo_crop50",
+        "category": "authentic+transform",
+        "ai_score": 0.0011,
+        "raw": {
+          "human": 0.9989,
+          "artificial": 0.0011
+        },
+        "inference_ms": 30,
+        "error": null
+      },
+      {
+        "name": "ai_art_synthetic",
+        "category": "ai-generated",
+        "ai_score": 0.9976,
+        "raw": {
+          "artificial": 0.9976,
+          "human": 0.0024
+        },
+        "inference_ms": 30,
+        "error": null
+      },
+      {
+        "name": "ai_art_jpeg30",
+        "category": "ai-generated+transform",
+        "ai_score": 0.9994,
+        "raw": {
+          "artificial": 0.9994,
+          "human": 0.0006
+        },
+        "inference_ms": 30,
+        "error": null
+      },
+      {
+        "name": "ai_art_small",
+        "category": "ai-generated+transform",
+        "ai_score": 0.9977,
+        "raw": {
+          "artificial": 0.9977,
+          "human": 0.0023
+        },
+        "inference_ms": 29,
+        "error": null
+      },
+      {
+        "name": "ai_art_crop50",
+        "category": "ai-generated+transform",
+        "ai_score": 0.9982,
+        "raw": {
+          "artificial": 0.9982,
+          "human": 0.0018
+        },
+        "inference_ms": 28,
+        "error": null
+      },
+      {
+        "name": "screenshot_ui",
+        "category": "screenshot",
+        "ai_score": 0.0568,
+        "raw": {
+          "human": 0.9432,
+          "artificial": 0.0568
+        },
+        "inference_ms": 31,
+        "error": null
+      },
+      {
+        "name": "screenshot_jpeg30",
+        "category": "screenshot+transform",
+        "ai_score": 0.9115,
+        "raw": {
+          "artificial": 0.9115,
+          "human": 0.0885
+        },
+        "inference_ms": 30,
+        "error": null
+      },
+      {
+        "name": "pure_noise",
+        "category": "edge-case",
+        "ai_score": 0.0114,
+        "raw": {
+          "human": 0.9886,
+          "artificial": 0.0114
+        },
+        "inference_ms": 30,
+        "error": null
+      },
+      {
+        "name": "solid_black",
+        "category": "edge-case",
+        "ai_score": 0.0004,
+        "raw": {
+          "human": 0.9996,
+          "artificial": 0.0004
+        },
+        "inference_ms": 28,
+        "error": null
+      }
+    ]
+  },
+  "prithivMLmods/Deepfake-Detect-Siglip2": {
+    "model_id": "prithivMLmods/Deepfake-Detect-Siglip2",
+    "load_ms": 105159,
+    "results": [
+      {
+        "name": "authentic_photo",
+        "category": "authentic",
+        "ai_score": 0.9466,
+        "raw": {
+          "Fake": 0.9466,
+          "Real": 0.0534
+        },
+        "inference_ms": 745,
+        "error": null
+      },
+      {
+        "name": "authentic_photo_jpeg30",
+        "category": "authentic+transform",
+        "ai_score": 0.8317,
+        "raw": {
+          "Fake": 0.8317,
+          "Real": 0.1683
+        },
+        "inference_ms": 40,
+        "error": null
+      },
+      {
+        "name": "authentic_photo_small",
+        "category": "authentic+transform",
+        "ai_score": 0.9613,
+        "raw": {
+          "Fake": 0.9613,
+          "Real": 0.0387
+        },
+        "inference_ms": 37,
+        "error": null
+      },
+      {
+        "name": "authentic_photo_crop50",
+        "category": "authentic+transform",
+        "ai_score": 0.8868,
+        "raw": {
+          "Fake": 0.8868,
+          "Real": 0.1132
+        },
+        "inference_ms": 34,
+        "error": null
+      },
+      {
+        "name": "ai_art_synthetic",
+        "category": "ai-generated",
+        "ai_score": 0.5187,
+        "raw": {
+          "Fake": 0.5187,
+          "Real": 0.4813
+        },
+        "inference_ms": 34,
+        "error": null
+      },
+      {
+        "name": "ai_art_jpeg30",
+        "category": "ai-generated+transform",
+        "ai_score": 0.4785,
+        "raw": {
+          "Real": 0.5215,
+          "Fake": 0.4785
+        },
+        "inference_ms": 34,
+        "error": null
+      },
+      {
+        "name": "ai_art_small",
+        "category": "ai-generated+transform",
+        "ai_score": 0.5183,
+        "raw": {
+          "Fake": 0.5183,
+          "Real": 0.4817
+        },
+        "inference_ms": 31,
+        "error": null
+      },
+      {
+        "name": "ai_art_crop50",
+        "category": "ai-generated+transform",
+        "ai_score": 0.5587,
+        "raw": {
+          "Fake": 0.5587,
+          "Real": 0.4413
+        },
+        "inference_ms": 33,
+        "error": null
+      },
+      {
+        "name": "screenshot_ui",
+        "category": "screenshot",
+        "ai_score": 0.9968,
+        "raw": {
+          "Fake": 0.9968,
+          "Real": 0.0032
+        },
+        "inference_ms": 34,
+        "error": null
+      },
+      {
+        "name": "screenshot_jpeg30",
+        "category": "screenshot+transform",
+        "ai_score": 0.998,
+        "raw": {
+          "Fake": 0.998,
+          "Real": 0.002
+        },
+        "inference_ms": 33,
+        "error": null
+      },
+      {
+        "name": "pure_noise",
+        "category": "edge-case",
+        "ai_score": 0.9554,
+        "raw": {
+          "Fake": 0.9554,
+          "Real": 0.0446
+        },
+        "inference_ms": 34,
+        "error": null
+      },
+      {
+        "name": "solid_black",
+        "category": "edge-case",
+        "ai_score": 0.9442,
+        "raw": {
+          "Fake": 0.9442,
+          "Real": 0.0558
+        },
+        "inference_ms": 33,
+        "error": null
+      }
+    ]
+  }
+}

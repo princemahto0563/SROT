@@ -1,0 +1,54 @@
+# runtime data — regenerate with `python backend/seed.py --reset`
+data/
+backend/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+backend/.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# node & frontend build
+node_modules/
+**/node_modules/
+dist/
+frontend/dist/
+
+# secrets & credentials
+.env
+.env.*
+!.env.example
+*.env
+*.pem
+*.key
+credentials.json
+service-account*.json
+secrets*
+
+# logs & temporary files
+*.log
+logs/
+*.tmp
+*.swp
+*.swo
+*~
+
+# editors & os metadata
+.DS_Store
+**/.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# caches & model weights
+.cache/
+model_cache/
+checkpoints/
