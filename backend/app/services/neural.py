@@ -138,11 +138,20 @@ def _ensure_loaded() -> bool:
             _device = "cpu"
 
         log.info("Loading neural detector %s on %s …", MODEL_ID, _device)
-        _pipe = hf_pipeline(
-            "image-classification",
-            model=MODEL_ID,
-            device=_device,
-        )
+        try:
+            _pipe = hf_pipeline(
+                "image-classification",
+                model=MODEL_ID,
+                revision=MODEL_REVISION,
+                device=_device,
+            )
+        except Exception as rev_err:
+            log.info("Loading with revision %s yielded %s; falling back to default snapshot", MODEL_REVISION, rev_err)
+            _pipe = hf_pipeline(
+                "image-classification",
+                model=MODEL_ID,
+                device=_device,
+            )
         _load_time_ms = int((time.monotonic() - t0) * 1000)
         log.info("Neural detector loaded in %d ms on %s", _load_time_ms, _device)
         return True

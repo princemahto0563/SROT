@@ -102,6 +102,11 @@ def _startup() -> None:
     db = SessionLocal()
     try:
         auth_svc.seed_demo_officer(db)
+        # Pre-warm neural detector so /api/health reflects loaded status immediately
+        try:
+            neural_svc._ensure_loaded()
+        except Exception:
+            pass
         if db.query(Case).count() == 0:
             try:
                 import sys, subprocess
