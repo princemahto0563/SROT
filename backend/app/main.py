@@ -69,13 +69,26 @@ app = FastAPI(
 )
 cors_raw = os.environ.get(
     "CORS_ORIGINS",
-    "http://localhost:5177,http://127.0.0.1:5177",
+    "http://localhost:5177,http://127.0.0.1:5177,https://srot-umt3.vercel.app",
 )
-allowed_origins = [orig.strip() for orig in cors_raw.split(",") if orig.strip()]
+allowed_origins_set = {
+    "http://localhost:5177",
+    "http://127.0.0.1:5177",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://srot-umt3.vercel.app",
+}
+for orig in cors_raw.split(","):
+    orig_clean = orig.strip()
+    if orig_clean:
+        allowed_origins_set.add(orig_clean)
+
+allowed_origins = list(allowed_origins_set)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
