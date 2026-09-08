@@ -19,13 +19,13 @@ The backend automatically seeds a default demo officer account on startup:
 
 | Field | Evaluation Value | Description |
 | :--- | :--- | :--- |
-| **Badge / Service ID** | `DEMO-OFFICER` | Unique officer credential identifier |
-| **Authorization Password** | `Forensic#2026!SecOps` | Strong password verified via PBKDF2-HMAC-SHA256 |
+| **Badge / Service ID** | `DEMO-OFFICER` | Unique officer credential identifier (set by `DEMO_OFFICER_BADGE`) |
+| **Authorization Password** | *(Configured via Env)* | Set via `DEMO_OFFICER_PASSWORD` on Render; verified via PBKDF2-HMAC-SHA256 |
 | **Officer Name** | `Insp. Vikramaditya (Cyber Ops)` | Investigating officer profile |
 | **Designation / Role** | `Senior Forensic Investigator` | Cyber forensics authority role |
 | **Assigned Unit** | `Cyber Crime Investigation Unit` | Operational forensic wing |
 
-> **Tip for Judges**: A convenient **"Auto-fill Demo"** button is integrated directly into the login screen to instantly populate these credentials for quick review.
+> **Security Note**: Passwords are never bundled into the frontend JavaScript. Evaluators enter the password configured in their environment (default local development password or Render environment variable). The login UI includes a **"Fill Demo Badge"** button to quickly insert `DEMO-OFFICER`.
 
 ---
 
@@ -33,7 +33,7 @@ The backend automatically seeds a default demo officer account on startup:
 
 ### Start Backend (Port 8077)
 ```bash
-cd /Users/princemahto/Downloads/SROT
+cd SROT
 backend/.venv/bin/uvicorn app.main:app --port 8077 --app-dir backend
 ```
 
@@ -63,7 +63,7 @@ http://localhost:5177/
    - Notice the immediate HTTP 401 rejection: *"Invalid officer badge ID or authorization password."*
 
 3. **Authorized Entry**:
-   - Click **"Auto-fill Demo"** (or enter `DEMO-OFFICER` and `Forensic#2026!SecOps`).
+   - Click **"Fill Demo Badge"** (or enter `DEMO-OFFICER`) and type the authorization password configured in your environment.
    - Click **"Authenticate & Access Console"**.
    - The gate verifies credentials and redirects to the active SROT Forensic Dashboard.
 

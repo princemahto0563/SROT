@@ -5,7 +5,7 @@ import {
   Button, Chip, EmptyState, Field, Notice, PageHead, Panel,
 } from "../components/ui";
 import { useSession } from "../state/session";
-import { api, useApi, usePolling, fmtBytes, fmtDate } from "../lib/api";
+import { api, useApi, usePolling, fmtBytes, fmtDate, authenticatedUrl } from "../lib/api";
 import type { Evidence, RunSummary } from "../lib/api";
 
 const STAGE_LABEL: Record<string, string> = {
@@ -235,11 +235,27 @@ function EvidenceViewer({ evidence, run }: { evidence: Evidence; run: RunSummary
         <div className="grid gap-5 md:grid-cols-[minmax(0,280px)_1fr]">
           <div className="mx-auto w-fit overflow-hidden rounded-lg border border-line bg-black">
             {ev.media_kind === "image" ? (
-              <img src={`/api/evidence/${ev.evidence_ref}/media`} alt="Ingested evidence"
-                   className="block max-h-[420px] w-auto" />
+              <img
+                key={ev.evidence_ref}
+                src={authenticatedUrl(`/api/evidence/${ev.evidence_ref}/media`)}
+                alt="Ingested evidence"
+                className="block max-h-[420px] w-auto"
+              />
             ) : (
-              <video src={`/api/evidence/${ev.evidence_ref}/media`} controls muted
-                     className="block max-h-[420px] w-auto" />
+              <video
+                key={ev.evidence_ref}
+                src={authenticatedUrl(`/api/evidence/${ev.evidence_ref}/media`)}
+                controls
+                muted
+                preload="auto"
+                playsInline
+                className="block max-h-[420px] w-auto"
+                onLoadedMetadata={(e) => {
+                  if (e.currentTarget.currentTime === 0) {
+                    e.currentTarget.currentTime = 0.001;
+                  }
+                }}
+              />
             )}
           </div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 md:grid-cols-3">

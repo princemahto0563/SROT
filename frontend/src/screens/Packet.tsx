@@ -4,7 +4,7 @@ import {
   Async, Button, Chip, EmptyState, Field, Notice, PageHead, Panel, Table, Row, Cell,
 } from "../components/ui";
 import { RequireEvidence } from "../components/guards";
-import { api, useApi, fmtDate } from "../lib/api";
+import { api, useApi, fmtDate, authenticatedUrl, getAuthToken } from "../lib/api";
 import type { Consistency, Evidence, Packet as PacketPayload } from "../lib/api";
 
 const DOC_LABEL: Record<string, string> = {
@@ -54,7 +54,12 @@ function Body({ evidence }: { evidence: Evidence }) {
     setDossierLoading(true);
     setDossierFeedback(null);
     try {
-      const res = await fetch(`/api/evidence/${ref}/executive-dossier`);
+      const dossierPath = `/api/evidence/${ref}/executive-dossier`;
+      const fullUrl = authenticatedUrl(dossierPath);
+      const headers: Record<string, string> = {};
+      const token = getAuthToken();
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(fullUrl, { headers });
       if (!res.ok) {
         let errMsg = `Server returned HTTP ${res.status}`;
         try {
@@ -93,7 +98,11 @@ function Body({ evidence }: { evidence: Evidence }) {
     setDocFeedback(null);
     try {
       const cleanUrl = `/api${doc.url.replace(/^\/api/, "")}?inline=true`;
-      const res = await fetch(cleanUrl);
+      const fullUrl = authenticatedUrl(cleanUrl);
+      const headers: Record<string, string> = {};
+      const token = getAuthToken();
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(fullUrl, { headers });
       if (!res.ok) {
         let errMsg = `Server returned HTTP ${res.status}`;
         try {
@@ -141,7 +150,11 @@ function Body({ evidence }: { evidence: Evidence }) {
     setDocFeedback(null);
     try {
       const cleanUrl = `/api${doc.url.replace(/^\/api/, "")}`;
-      const res = await fetch(cleanUrl);
+      const fullUrl = authenticatedUrl(cleanUrl);
+      const headers: Record<string, string> = {};
+      const token = getAuthToken();
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(fullUrl, { headers });
       if (!res.ok) {
         let errMsg = `Server returned HTTP ${res.status}`;
         try {
@@ -180,8 +193,12 @@ function Body({ evidence }: { evidence: Evidence }) {
     setDownloadError(null);
     setDownloadSuccess(null);
     try {
-      const url = `/api${zipUrl.replace(/^\/api/, "")}`;
-      const res = await fetch(url);
+      const cleanUrl = `/api${zipUrl.replace(/^\/api/, "")}`;
+      const fullUrl = authenticatedUrl(cleanUrl);
+      const headers: Record<string, string> = {};
+      const token = getAuthToken();
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(fullUrl, { headers });
       if (!res.ok) {
         throw new Error(`Failed to download packet archive (HTTP ${res.status})`);
       }

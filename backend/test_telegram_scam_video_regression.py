@@ -33,10 +33,14 @@ except Exception:
     pass
 requests = _session
 
-SAMPLE_FILE = Path("/Users/princemahto/Downloads/SROT/data/evidence/CASE-2026-024/EV-CASE-2026-024-003__Telegram_Video_2026-09-04_AITradingBot_SCAM_DEMO.mp4")
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_DATA_DIR = Path(os.environ.get("SROT_DATA", _PROJECT_ROOT / "data"))
+SAMPLE_FILE = _DATA_DIR / "evidence" / "CASE-2026-024" / "EV-CASE-2026-024-003__Telegram_Video_2026-09-04_AITradingBot_SCAM_DEMO.mp4"
 if not SAMPLE_FILE.is_file():
     # Fallback to alternate copy if present
-    SAMPLE_FILE = Path("/Users/princemahto/Downloads/SROT/data/evidence/CASE-2026-002/EV-CASE-2026-002-001__Telegram_Video_2026-09-04_AITradingBot_SCAM_DEMO.mp4")
+    SAMPLE_FILE = _DATA_DIR / "evidence" / "CASE-2026-002" / "EV-CASE-2026-002-001__Telegram_Video_2026-09-04_AITradingBot_SCAM_DEMO.mp4"
+if not SAMPLE_FILE.is_file():
+    SAMPLE_FILE = _PROJECT_ROOT / "data" / "evidence" / "CASE-2026-024" / "EV-CASE-2026-024-003__Telegram_Video_2026-09-04_AITradingBot_SCAM_DEMO.mp4"
 
 EXPECTED_SHA256 = "112020137c003848c68e3d0ac2d7fbc5fe0bb487fb1a0b726b8f6ac46b813592"
 

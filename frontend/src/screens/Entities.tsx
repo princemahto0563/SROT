@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Async, Chip, EmptyState, Field, Meter, Notice, PageHead, Panel, Table, Row, Cell } from "../components/ui";
 import { RequireEvidence } from "../components/guards";
-import { useApi, fmtNum } from "../lib/api";
+import { useApi, fmtNum, authenticatedUrl } from "../lib/api";
 
 type Ent = {
   value: string; entity_type: string; raw_text: string; language: string;
@@ -150,7 +150,7 @@ function Highlighted({ ent }: { ent: Ent }) {
     <>
       <div className="relative mx-auto w-fit overflow-hidden rounded-lg border border-line bg-black">
         <img
-          src={ent.frame_image_url}
+          src={authenticatedUrl(ent.frame_image_url)}
           alt={`Frame ${ent.frame_index} containing ${ent.entity_type}`}
           className="block max-h-[420px] w-auto"
           onLoad={(evt) => {

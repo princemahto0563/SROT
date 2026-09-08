@@ -4,7 +4,14 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export const API = "/api";
+const envApi = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
+
+// Normalize API base so that it ends with '/api' if pointing to backend root, or stays '/api' locally
+export const API = (() => {
+  if (!envApi) return "/api";
+  if (envApi.endsWith("/api")) return envApi;
+  return `${envApi}/api`;
+})();
 
 const TOKEN_KEY = "srot_officer_token";
 
@@ -26,6 +33,25 @@ export function setAuthToken(token: string | null): void {
   } catch {}
 }
 
+export function authenticatedUrl(path?: string | null): string {
+  if (!path) return "";
+  let fullUrl = path;
+  if (API.startsWith("http")) {
+    const baseOrigin = API.replace(/\/api$/, "");
+    if (path.startsWith("/api")) {
+      fullUrl = `${baseOrigin}${path}`;
+    } else if (path.startsWith("http")) {
+      fullUrl = path;
+    } else {
+      fullUrl = `${API}${path.startsWith("/") ? "" : "/"}${path}`;
+    }
+  }
+  const token = getAuthToken();
+  if (!token) return fullUrl;
+  const sep = fullUrl.includes("?") ? "&" : "?";
+  return `${fullUrl}${sep}token=${encodeURIComponent(token)}`;
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -45,7 +71,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   reqInit.headers = headers;
 
   try {
-    res = await fetch(`${API}${path}`, reqInit);
+    const cleanPath = path.startsWith("/api/") ? path.slice(4) : (path === "/api" ? "/" : path);
+    const targetPath = cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`;
+    res = await fetch(`${API}${targetPath}`, reqInit);
   } catch {
     throw new ApiError(
       "Cannot reach the SROT backend. Start it with: uvicorn app.main:app --port 8077",

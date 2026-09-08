@@ -7,7 +7,7 @@ import {
   Async, Button, Chip, EmptyState, Field, Meter, Notice, PageHead, Panel, Table, Row, Cell,
 } from "../components/ui";
 import { RequireEvidence } from "../components/guards";
-import { useApi, api, fmtNum } from "../lib/api";
+import { useApi, api, fmtNum, authenticatedUrl } from "../lib/api";
 import type { Signal, CrossSignalAssessment, QualityGate, ReplayResult, Evidence } from "../lib/api";
 
 type AnalysisPayload = {
@@ -577,7 +577,7 @@ function AnalysisBody({ evidenceRef, evidence }: { evidenceRef: string; evidence
                       <div className="mb-2 text-[11.5px] font-semibold text-ink">Original Reference Frame</div>
                       <div className="overflow-hidden rounded-lg border border-line bg-black w-full flex justify-center">
                         <img
-                          src={`/api/evidence/${evidenceRef}/frames/0/image`}
+                          src={authenticatedUrl(`/api/evidence/${evidenceRef}/frames/0/image`)}
                           alt="Original evidence frame"
                           className="block max-h-[340px] w-auto object-contain"
                           loading="lazy"
@@ -595,7 +595,7 @@ function AnalysisBody({ evidenceRef, evidence }: { evidenceRef: string; evidence
                       </div>
                       <div className="overflow-hidden rounded-lg border border-line bg-black w-full flex justify-center">
                         <img
-                          src={`/api/evidence/${evidenceRef}/traces/${activeTrace}`}
+                          src={authenticatedUrl(`/api/evidence/${evidenceRef}/traces/${activeTrace}`)}
                           alt={`Forensic trace ${activeTrace}`}
                           className="block max-h-[340px] w-auto object-contain"
                           loading="lazy"
@@ -846,7 +846,7 @@ function FrameStrip({ frames, peak }: {
 
       <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,240px)_1fr]">
         <div className="mx-auto w-fit overflow-hidden rounded-lg border border-line bg-black">
-          <img src={chosen.image_url} alt={`Sampled frame ${chosen.frame_index}`}
+          <img src={authenticatedUrl(chosen.image_url)} alt={`Sampled frame ${chosen.frame_index}`}
                className="block max-h-[360px] w-auto" loading="lazy" />
         </div>
         <div>

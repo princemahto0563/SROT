@@ -58,9 +58,9 @@ def seed_demo_officer(db: Session) -> OfficerUser:
     """Seed the default demo officer account if not already present."""
     badge_id = os.environ.get("DEMO_OFFICER_BADGE", "DEMO-OFFICER").strip()
     password = os.environ.get("DEMO_OFFICER_PASSWORD", "Forensic#2026!SecOps").strip()
-    name = os.environ.get("DEMO_OFFICER_NAME", "Insp. Vikramaditya (Cyber Ops)").strip()
+    name = os.environ.get("DEMO_OFFICER_NAME", "Demo Officer").strip()
     role = os.environ.get("DEMO_OFFICER_ROLE", "Senior Forensic Investigator").strip()
-    unit = os.environ.get("DEMO_OFFICER_UNIT", "Cyber Crime Investigation Unit").strip()
+    unit = os.environ.get("DEMO_OFFICER_UNIT", "Digital Forensics Unit").strip()
 
     officer = db.query(OfficerUser).filter(OfficerUser.badge_id == badge_id).first()
     if officer is None:
@@ -141,14 +141,18 @@ def revoke_session_token(db: Session, raw_token: str) -> bool:
 
 
 def extract_token(request: Request) -> Optional[str]:
-    """Extract token from Authorization header or X-Session-Token header."""
+    """Extract token from Authorization header, X-Session-Token header, or query param."""
     auth_header = request.headers.get("Authorization")
     if auth_header:
         parts = auth_header.strip().split()
         if len(parts) == 2 and parts[0].lower() == "bearer":
             return parts[1]
     # Fallback to custom header
-    return request.headers.get("X-Session-Token")
+    header_token = request.headers.get("X-Session-Token")
+    if header_token:
+        return header_token
+    # Fallback to query parameter (required for browser media/image/video elements that cannot set custom headers)
+    return request.query_params.get("token")
 
 
 def get_current_officer(request: Request, db: Session = Depends(get_db)) -> OfficerUser:

@@ -1,6 +1,7 @@
 """SROT API. FastAPI + SQLite. No external services; runs fully offline."""
 from __future__ import annotations
 import datetime as dt
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -66,7 +67,19 @@ app = FastAPI(
     version="2.0.0",
     dependencies=[Depends(verify_officer_access)],
 )
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+cors_raw = os.environ.get(
+    "CORS_ORIGINS",
+    "http://localhost:5177,http://127.0.0.1:5177",
+)
+allowed_origins = [orig.strip() for orig in cors_raw.split(",") if orig.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
@@ -430,20 +443,28 @@ def get_frames(evidence_ref: str, db: Session = Depends(get_db)):
 
 @app.get("/api/evidence/{evidence_ref}/frames/{idx}/image")
 def frame_image(evidence_ref: str, idx: int, db: Session = Depends(get_db)):
+    import mimetypes
     ev, run = _require_run(db, evidence_ref)
     row = (db.query(FrameAnalysis)
            .filter(FrameAnalysis.run_id == run.id, FrameAnalysis.frame_index == idx).first())
     if not row or not row.path or not Path(row.path).exists():
+        row = (db.query(FrameAnalysis)
+               .filter(FrameAnalysis.run_id == run.id)
+               .order_by(FrameAnalysis.frame_index.asc()).first())
+    if not row or not row.path or not Path(row.path).exists():
         raise HTTPException(404, "frame not available")
-    return FileResponse(row.path, media_type="image/jpeg")
+    media_type = mimetypes.guess_type(row.path)[0] or "image/jpeg"
+    return FileResponse(row.path, media_type=media_type)
 
 
 @app.get("/api/evidence/{evidence_ref}/media")
 def evidence_media(evidence_ref: str, db: Session = Depends(get_db)):
+    import mimetypes
     ev = db.query(Evidence).filter(Evidence.evidence_ref == evidence_ref).first()
     if not ev or not Path(ev.stored_path).exists():
         raise HTTPException(404, "evidence file not available")
-    return FileResponse(ev.stored_path, media_type=ev.mime_type or "application/octet-stream")
+    media_type = ev.mime_type or mimetypes.guess_type(ev.stored_path)[0] or "application/octet-stream"
+    return FileResponse(ev.stored_path, media_type=media_type)
 
 
 @app.get("/api/evidence/{evidence_ref}/neural-analysis")

@@ -148,11 +148,11 @@ def generate_trace(frame_path: str | Path, trace_type: str) -> tuple[bytes | Non
         return None, {"error": f"Failed to load frame image: {p}"}
 
     trace_type = trace_type.lower().strip()
-    if trace_type == "noise_residual":
+    if trace_type in ("noise_residual", "noise", "prnu", "sensor_noise"):
         rendered, meta = generate_noise_residual_map(img)
-    elif trace_type == "ela_residual":
+    elif trace_type in ("ela_residual", "ela"):
         rendered, meta = generate_ela_map(img)
-    elif trace_type in ("gradient_inconsistency", "gradient"):
+    elif trace_type in ("gradient_inconsistency", "gradient", "sobel"):
         rendered, meta = generate_gradient_map(img)
     else:
         return None, {"error": f"Unknown trace type: {trace_type}. Available: noise_residual, ela_residual, gradient_inconsistency"}
