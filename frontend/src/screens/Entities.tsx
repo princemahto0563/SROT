@@ -160,7 +160,7 @@ function Highlighted({ ent }: { ent: Ent }) {
         />
         {box && dims && (
           <div
-            className="pointer-events-none absolute rounded-[3px] border-2 border-accent shadow-[0_0_0_9999px_rgba(6,14,22,0.55)]"
+            className="pointer-events-none absolute rounded-[3px] border-2 border-accent shadow-[0_0_0_9999px_rgba(8,9,13,0.65)]"
             style={{
               left: `${(box[0] / dims.w) * 100}%`,
               top: `${(box[1] / dims.h) * 100}%`,

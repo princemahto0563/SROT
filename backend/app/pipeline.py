@@ -192,164 +192,164 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
             # ── ANALYSIS ────────────────────────────────────────────────────────
             _set_stage(db, run, "ANALYSIS", "running")
             result = score_media(src, work / "frames", ev.media_kind, max_frames=8)
-        if result.get("error") and result.get("score") is None:
-            run.status = "failed"; run.error = result["error"]
-            _set_stage(db, run, "ANALYSIS", "failed"); db.commit()
-            return
+            if result.get("error") and result.get("score") is None:
+                run.status = "failed"; run.error = result["error"]
+                _set_stage(db, run, "ANALYSIS", "failed"); db.commit()
+                return
 
-        run.detector_backend = sig_svc.get_detector_backend()
-        run.aggregation_formula = sig_svc.AGGREGATION_FORMULA
-        run.aggregate_score = result["score"]
-        run.assessment = result["assessment"]
-        run.confidence_band = result["band"]
-        run.dissent = bool(result["dissent"])
-        run.frames_sampled = len(result["frame_records"])
-        db.add(run); db.commit()
+            run.detector_backend = sig_svc.get_detector_backend()
+            run.aggregation_formula = sig_svc.AGGREGATION_FORMULA
+            run.aggregate_score = result["score"]
+            run.assessment = result["assessment"]
+            run.confidence_band = result["band"]
+            run.dissent = bool(result["dissent"])
+            run.frames_sampled = len(result["frame_records"])
+            db.add(run); db.commit()
 
-        db.add_all([Signal(run_id=run.id, key=s["key"], name=s["name"], result=s["result"],
-                           strength=s["strength"], score=s["score"], weight=s["weight"],
-                           direction=s["direction"], measurement=jsonable(s["measurement"]),
-                           method=s["method"], note=s["note"]) for s in result["signals"]])
-        for pf in result["frame_result"]["per_frame"]:
-            rec = result["frame_records"][pf["frame_index"]]
-            db.add(FrameAnalysis(evidence_id=ev.id, run_id=run.id,
-                                 frame_index=pf["frame_index"], frame_number=rec.get("frame_number"),
-                                 timestamp_s=rec.get("timestamp_s"), score=pf["score"],
-                                 metrics_json=jsonable(pf["metrics"]), path=pf["path"]))
-        for fh in result["frame_hashes"]:
-            for ht in ("phash", "dhash", "whash"):
-                db.add(Fingerprint(evidence_id=ev.id, hash_type=ht, hash_hex=fh[ht],
-                                   frame_index=fh["frame_index"]))
-            # normalised views (border-trimmed / centre-cropped) used for matching
-            for view, hx in (fh.get("views") or {}).items():
-                if view == "full":
-                    continue
-                db.add(Fingerprint(evidence_id=ev.id, hash_type=fp_svc.view_hash_type(view),
-                                   hash_hex=hx, frame_index=fh["frame_index"]))
-        db.commit()
-        audit.record(db, case_id=case.id, action="Forensic signal ensemble completed",
-                     component=sig_svc.get_detector_backend(), evidence_ref=ev.evidence_ref,
-                     evidence_hash=ev.sha256,
-                     payload={"aggregate": run.aggregate_score, "assessment": run.assessment,
-                              "band": run.confidence_band, "frames": run.frames_sampled})
-        _set_stage(db, run, "ANALYSIS", "completed")
+            db.add_all([Signal(run_id=run.id, key=s["key"], name=s["name"], result=s["result"],
+                               strength=s["strength"], score=s["score"], weight=s["weight"],
+                               direction=s["direction"], measurement=jsonable(s["measurement"]),
+                               method=s["method"], note=s["note"]) for s in result["signals"]])
+            for pf in result["frame_result"]["per_frame"]:
+                rec = result["frame_records"][pf["frame_index"]]
+                db.add(FrameAnalysis(evidence_id=ev.id, run_id=run.id,
+                                     frame_index=pf["frame_index"], frame_number=rec.get("frame_number"),
+                                     timestamp_s=rec.get("timestamp_s"), score=pf["score"],
+                                     metrics_json=jsonable(pf["metrics"]), path=pf["path"]))
+            for fh in result["frame_hashes"]:
+                for ht in ("phash", "dhash", "whash"):
+                    db.add(Fingerprint(evidence_id=ev.id, hash_type=ht, hash_hex=fh[ht],
+                                       frame_index=fh["frame_index"]))
+                # normalised views (border-trimmed / centre-cropped) used for matching
+                for view, hx in (fh.get("views") or {}).items():
+                    if view == "full":
+                        continue
+                    db.add(Fingerprint(evidence_id=ev.id, hash_type=fp_svc.view_hash_type(view),
+                                       hash_hex=hx, frame_index=fh["frame_index"]))
+            db.commit()
+            audit.record(db, case_id=case.id, action="Forensic signal ensemble completed",
+                         component=sig_svc.get_detector_backend(), evidence_ref=ev.evidence_ref,
+                         evidence_hash=ev.sha256,
+                         payload={"aggregate": run.aggregate_score, "assessment": run.assessment,
+                                  "band": run.confidence_band, "frames": run.frames_sampled})
+            _set_stage(db, run, "ANALYSIS", "completed")
 
-        # ── NEURAL (real model inference on sampled frames) ────────────────
-        _set_stage(db, run, "NEURAL", "running")
-        neural_result = result.get("neural_result")
-        if ev.media_kind == "audio":
-            audit.record(db, case_id=case.id,
-                         action="Neural visual ViT analysis skipped — not applicable to audio media",
-                         component="neural (ViT)", evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
-                         payload={"status": "NOT_APPLICABLE", "media_kind": "audio"})
-        elif neural_result and neural_result.get("model_available"):
-            for fr in neural_result.get("frame_results", []):
-                db.add(NeuralFrameResult(
-                    evidence_id=ev.id, run_id=run.id,
-                    frame_index=fr.get("frame_index"),
-                    frame_number=fr.get("frame_number"),
-                    timestamp_s=fr.get("timestamp_s"),
-                    model_name=neural_result.get("model_name"),
-                    model_version=neural_result.get("model_version"),
-                    raw_output=jsonable(fr.get("raw_output")),
-                    normalized_score=fr.get("score"),
-                    label=fr.get("label"),
-                    inference_time_ms=fr.get("inference_time_ms"),
-                    preprocessing_version=neural_result.get("preprocessing"),
-                    error=fr.get("error"),
-                ))
+            # ── NEURAL (real model inference on sampled frames) ────────────────
+            _set_stage(db, run, "NEURAL", "running")
+            neural_result = result.get("neural_result")
+            if ev.media_kind == "audio":
+                audit.record(db, case_id=case.id,
+                             action="Neural visual ViT analysis skipped — not applicable to audio media",
+                             component="neural (ViT)", evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                             payload={"status": "NOT_APPLICABLE", "media_kind": "audio"})
+            elif neural_result and neural_result.get("model_available"):
+                for fr in neural_result.get("frame_results", []):
+                    db.add(NeuralFrameResult(
+                        evidence_id=ev.id, run_id=run.id,
+                        frame_index=fr.get("frame_index"),
+                        frame_number=fr.get("frame_number"),
+                        timestamp_s=fr.get("timestamp_s"),
+                        model_name=neural_result.get("model_name"),
+                        model_version=neural_result.get("model_version"),
+                        raw_output=jsonable(fr.get("raw_output")),
+                        normalized_score=fr.get("score"),
+                        label=fr.get("label"),
+                        inference_time_ms=fr.get("inference_time_ms"),
+                        preprocessing_version=neural_result.get("preprocessing"),
+                        error=fr.get("error"),
+                    ))
+                db.commit()
+                audit.record(db, case_id=case.id,
+                             action=f"Neural analysis completed — {neural_result.get('frames_analysed', 0)} frames, "
+                                    f"median score {neural_result.get('median_score')}",
+                             component=f"neural ({neural_result.get('model_name')})",
+                             evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                             payload=jsonable({"median": neural_result.get("median_score"),
+                                      "mean": neural_result.get("mean_score"),
+                                      "assessment": neural_result.get("assessment"),
+                                      "device": neural_result.get("device")}))
+            _set_stage(db, run, "NEURAL", "completed")
+
+            # ── TRACE (corpus matching + ledger) ────────────────────────────────
+            _set_stage(db, run, "TRACE", "running")
+            n_matches = _match_corpus(db, ev, run)
+            _record_ledger_and_campaign(db, case, ev, run)
+            audit.record(db, case_id=case.id, action=f"Origin trace completed — {n_matches} corpus match(es)",
+                         component="perceptual fingerprint (pHash/dHash/wHash)",
+                         evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                         payload={"matches": n_matches})
+            _set_stage(db, run, "TRACE", "completed")
+
+            # ── OCR ─────────────────────────────────────────────────────────────
+            _set_stage(db, run, "OCR", "running")
+            if ev.media_kind == "audio":
+                n_ents = 0
+                audit.record(db, case_id=case.id,
+                             action="OCR extraction skipped — not applicable to audio media",
+                             component="ocr (Tesseract)", evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                             payload={"status": "NOT_APPLICABLE", "media_kind": "audio"})
+            else:
+                try:
+                    n_ents = _run_ocr(db, ev, run, result["frame_records"])
+                    audit.record(db, case_id=case.id, action=f"OCR extraction completed — {n_ents} entities",
+                                 component=f"tesseract [{ocr_svc.lang_string()}]",
+                                 evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                                 payload={"entities": n_ents, "languages": ocr_svc.available_languages()})
+                except Exception as e:
+                    n_ents = 0
+                    audit.record(db, case_id=case.id, action=f"OCR extraction completed (bounded) — {n_ents} entities",
+                                 component=f"tesseract [{ocr_svc.lang_string()}]",
+                                 evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                                 payload={"entities": 0, "status": "bounded/completed", "note": str(e)})
+            _set_stage(db, run, "OCR", "completed")
+
+            # ── RECAPTURE ───────────────────────────────────────────────────────
+            _set_stage(db, run, "RECAPTURE", "running")
+            if ev.media_kind == "audio":
+                rc = {"likelihood": "NOT_APPLICABLE", "score": None, "letterbox": {}, "static": {}, "fft": {},
+                      "ui": {"regions_scanned": [], "recovered_handles": []},
+                      "note": "Screen recapture analysis not applicable to audio media"}
+            else:
+                rc = rec_svc.analyse([r["path"] for r in result["frame_records"]])
+            db.add(RecaptureResult(evidence_id=ev.id, run_id=run.id, likelihood=rc["likelihood"],
+                                   score=rc["score"], letterbox_json=jsonable(rc["letterbox"]),
+                                   static_band_json=jsonable(rc["static"]), fft_json=jsonable(rc["fft"]),
+                                   ui_regions_json=jsonable(rc["ui"]["regions_scanned"]),
+                                   recovered_handles_json=jsonable(rc["ui"]["recovered_handles"]),
+                                   note=rc["note"]))
             db.commit()
             audit.record(db, case_id=case.id,
-                         action=f"Neural analysis completed — {neural_result.get('frames_analysed', 0)} frames, "
-                                f"median score {neural_result.get('median_score')}",
-                         component=f"neural ({neural_result.get('model_name')})",
+                         action=f"Recapture analysis completed — likelihood {rc['likelihood']}",
+                         component="recapture forensics (OpenCV + OCR)",
                          evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
-                         payload=jsonable({"median": neural_result.get("median_score"),
-                                  "mean": neural_result.get("mean_score"),
-                                  "assessment": neural_result.get("assessment"),
-                                  "device": neural_result.get("device")}))
-        _set_stage(db, run, "NEURAL", "completed")
+                         payload=jsonable({"score": rc["score"],
+                                  "handles": [h["handle"] for h in rc["ui"]["recovered_handles"]]}))
+            _set_stage(db, run, "RECAPTURE", "completed")
 
-        # ── TRACE (corpus matching + ledger) ────────────────────────────────
-        _set_stage(db, run, "TRACE", "running")
-        n_matches = _match_corpus(db, ev, run)
-        _record_ledger_and_campaign(db, case, ev, run)
-        audit.record(db, case_id=case.id, action=f"Origin trace completed — {n_matches} corpus match(es)",
-                     component="perceptual fingerprint (pHash/dHash/wHash)",
-                     evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
-                     payload={"matches": n_matches})
-        _set_stage(db, run, "TRACE", "completed")
-
-        # ── OCR ─────────────────────────────────────────────────────────────
-        _set_stage(db, run, "OCR", "running")
-        if ev.media_kind == "audio":
-            n_ents = 0
+            # ── GRAPH + TIMELINE + LEADS ────────────────────────────────────────
+            _set_stage(db, run, "GRAPH", "running")
+            gstats = casebuild.rebuild_graph(db, case, ev, run)
+            casebuild.rebuild_timeline(db, case, ev, run)
             audit.record(db, case_id=case.id,
-                         action="OCR extraction skipped — not applicable to audio media",
-                         component="ocr (Tesseract)", evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
-                         payload={"status": "NOT_APPLICABLE", "media_kind": "audio"})
-        else:
-            try:
-                n_ents = _run_ocr(db, ev, run, result["frame_records"])
-                audit.record(db, case_id=case.id, action=f"OCR extraction completed — {n_ents} entities",
-                             component=f"tesseract [{ocr_svc.lang_string()}]",
-                             evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
-                             payload={"entities": n_ents, "languages": ocr_svc.available_languages()})
-            except Exception as e:
-                n_ents = 0
-                audit.record(db, case_id=case.id, action=f"OCR extraction completed (bounded) — {n_ents} entities",
-                             component=f"tesseract [{ocr_svc.lang_string()}]",
-                             evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
-                             payload={"entities": 0, "status": "bounded/completed", "note": str(e)})
-        _set_stage(db, run, "OCR", "completed")
+                         action=f"Investigation graph rebuilt — {gstats['nodes']} nodes, {gstats['edges']} edges",
+                         component="graph builder (NetworkX)", evidence_ref=ev.evidence_ref,
+                         evidence_hash=ev.sha256, payload=gstats)
+            _set_stage(db, run, "GRAPH", "completed")
 
-        # ── RECAPTURE ───────────────────────────────────────────────────────
-        _set_stage(db, run, "RECAPTURE", "running")
-        if ev.media_kind == "audio":
-            rc = {"likelihood": "NOT_APPLICABLE", "score": None, "letterbox": {}, "static": {}, "fft": {},
-                  "ui": {"regions_scanned": [], "recovered_handles": []},
-                  "note": "Screen recapture analysis not applicable to audio media"}
-        else:
-            rc = rec_svc.analyse([r["path"] for r in result["frame_records"]])
-        db.add(RecaptureResult(evidence_id=ev.id, run_id=run.id, likelihood=rc["likelihood"],
-                               score=rc["score"], letterbox_json=jsonable(rc["letterbox"]),
-                               static_band_json=jsonable(rc["static"]), fft_json=jsonable(rc["fft"]),
-                               ui_regions_json=jsonable(rc["ui"]["regions_scanned"]),
-                               recovered_handles_json=jsonable(rc["ui"]["recovered_handles"]),
-                               note=rc["note"]))
-        db.commit()
-        audit.record(db, case_id=case.id,
-                     action=f"Recapture analysis completed — likelihood {rc['likelihood']}",
-                     component="recapture forensics (OpenCV + OCR)",
-                     evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
-                     payload=jsonable({"score": rc["score"],
-                              "handles": [h["handle"] for h in rc["ui"]["recovered_handles"]]}))
-        _set_stage(db, run, "RECAPTURE", "completed")
+            _set_stage(db, run, "LEADS", "running")
+            n_leads = casebuild.rebuild_leads(db, case, ev, run)
+            _set_stage(db, run, "LEADS", "completed")
 
-        # ── GRAPH + TIMELINE + LEADS ────────────────────────────────────────
-        _set_stage(db, run, "GRAPH", "running")
-        gstats = casebuild.rebuild_graph(db, case, ev, run)
-        casebuild.rebuild_timeline(db, case, ev, run)
-        audit.record(db, case_id=case.id,
-                     action=f"Investigation graph rebuilt — {gstats['nodes']} nodes, {gstats['edges']} edges",
-                     component="graph builder (NetworkX)", evidence_ref=ev.evidence_ref,
-                     evidence_hash=ev.sha256, payload=gstats)
-        _set_stage(db, run, "GRAPH", "completed")
-
-        _set_stage(db, run, "LEADS", "running")
-        n_leads = casebuild.rebuild_leads(db, case, ev, run)
-        _set_stage(db, run, "LEADS", "completed")
-
-        run.status = "completed"; run.finished_at = utcnow(); run.stage = "done"
-        db.add(run); db.commit()
-        casebuild.rebuild_timeline(db, case, ev, run)
-        audit.record(db, case_id=case.id, action=f"Analysis run completed — {n_leads} leads generated",
-                     component="pipeline", evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
-                     payload={"assessment": run.assessment, "aggregate": run.aggregate_score})
-    except Exception as e:  # noqa: BLE001
-        _fail(AnalysisRun, run_id, e)
-    finally:
-        db.close()
+            run.status = "completed"; run.finished_at = utcnow(); run.stage = "done"
+            db.add(run); db.commit()
+            casebuild.rebuild_timeline(db, case, ev, run)
+            audit.record(db, case_id=case.id, action=f"Analysis run completed — {n_leads} leads generated",
+                         component="pipeline", evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                         payload={"assessment": run.assessment, "aggregate": run.aggregate_score})
+        except Exception as e:  # noqa: BLE001
+            _fail(AnalysisRun, run_id, e)
+        finally:
+            db.close()
 
 
 def _match_corpus(db: Session, ev: Evidence, run: AnalysisRun) -> int:

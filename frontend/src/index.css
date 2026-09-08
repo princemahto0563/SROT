@@ -9,11 +9,11 @@
     @apply bg-bg text-ink font-sans antialiased;
     font-feature-settings: "cv02","cv03","cv04";
   }
-  ::selection { background: #4CA6E8; color: #06121C; }
+  ::selection { background: #9B7BFF; color: #08090D; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #24344699; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
-  ::-webkit-scrollbar-thumb:hover { background: #33465c; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb { background: #292D3A99; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: #3B4052; background-clip: content-box; }
 }
 
 @layer components {
@@ -24,7 +24,7 @@
   .kv dt { @apply text-[12.5px] text-ink2 shrink-0; }
   .kv dd { @apply text-[12.5px] font-medium text-ink text-right; }
   .btn { @apply inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors duration-150 select-none; }
-  .btn-primary { @apply btn bg-accent text-[#06121C] hover:brightness-110; }
+  .btn-primary { @apply btn bg-accent text-[#08090D] hover:brightness-110; }
   .btn-ghost { @apply btn border border-line text-ink2 hover:text-ink hover:bg-s2; }
   .chip { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[10.5px] font-semibold uppercase tracking-[0.06em]; }
   .fade-in { animation: fadeIn .22s ease both; }
@@ -40,12 +40,12 @@
 
 /* React Flow theme overrides */
 .react-flow__attribution { display: none; }
-.react-flow__edge-text { font-size: 9.5px; font-weight: 600; fill: #97A9BC; }
-.react-flow__edge-textbg { fill: #0B1017; }
+.react-flow__edge-text { font-size: 9.5px; font-weight: 600; fill: #9297A6; }
+.react-flow__edge-textbg { fill: #08090D; }
 .react-flow__controls-button {
-  background: #17222F !important; border-bottom: 1px solid #223141 !important; fill: #97A9BC !important;
+  background: #171A24 !important; border-bottom: 1px solid #292D3A !important; fill: #9297A6 !important;
 }
-.react-flow__controls-button:hover { background: #1E2B3A !important; }
+.react-flow__controls-button:hover { background: #1D202B !important; }
 
 /* Report print */
 @media print {

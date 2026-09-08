@@ -250,7 +250,7 @@ export default function Shell({ children }: { children: ReactNode }) {
 function Emblem() {
   return (
     <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-accent/35 bg-accent/10">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#4CA6E8" strokeWidth="1.9"
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9B7BFF" strokeWidth="1.9"
            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M12 2 4 5.5v6c0 5 3.4 9.2 8 10.5 4.6-1.3 8-5.5 8-10.5v-6z" />
         <circle cx="12" cy="11" r="3" />

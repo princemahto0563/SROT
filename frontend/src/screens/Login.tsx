@@ -41,20 +41,20 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[#090D14] px-4 py-8 text-ink selection:bg-accent/30">
+    <div className="flex min-h-screen w-full items-center justify-center bg-[#08090D] px-4 py-8 text-ink selection:bg-accent/30">
       {/* Background ambient forensic grid */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(76,166,232,0.12),rgba(255,255,255,0))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(155,123,255,0.12),rgba(255,255,255,0))]" />
 
       <div className="relative w-full max-w-md">
         {/* Header Branding */}
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3.5 flex h-14 w-14 items-center justify-center rounded-xl border border-accent/40 bg-accent/10 shadow-[0_0_24px_rgba(76,166,232,0.18)]">
+          <div className="mx-auto mb-3.5 flex h-14 w-14 items-center justify-center rounded-xl border border-accent/40 bg-accent/10 shadow-[0_0_24px_rgba(155,123,255,0.18)]">
             <svg
               width="28"
               height="28"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#4CA6E8"
+              stroke="#9B7BFF"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -160,11 +160,11 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-accent/80 bg-accent py-2.5 text-xs font-semibold text-[#090D14] shadow-md transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-accent/80 bg-accent py-2.5 text-xs font-semibold text-[#08090D] shadow-md transition hover:bg-accentBright disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <>
-                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#090D14] border-t-transparent" />
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#08090D] border-t-transparent" />
                   <span>Verifying Credentials…</span>
                 </>
               ) : (

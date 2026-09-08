@@ -136,28 +136,28 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
                     <div style={{ height: 250 }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={chart} margin={{ top: 8, right: 12, bottom: 32, left: -14 }}>
-                          <CartesianGrid stroke="#1A2634" vertical={false} />
-                          <XAxis dataKey="name" tick={{ fontSize: 9.5, fill: "#6C7F94" }}
+                          <CartesianGrid stroke="#202330" vertical={false} />
+                          <XAxis dataKey="name" tick={{ fontSize: 9.5, fill: "#686E7D" }}
                                  angle={-32} textAnchor="end" interval={0} height={54}
-                                 stroke="#223141" />
-                          <YAxis tick={{ fontSize: 10, fill: "#6C7F94" }} stroke="#223141"
+                                 stroke="#292D3A" />
+                          <YAxis tick={{ fontSize: 10, fill: "#686E7D" }} stroke="#292D3A"
                                  domain={[0, 100]} />
                           <Tooltip
-                            contentStyle={{ background: "#121A24", border: "1px solid #223141",
+                            contentStyle={{ background: "#10121A", border: "1px solid #292D3A",
                                             borderRadius: 8, fontSize: 11.5 }}
-                            labelStyle={{ color: "#E9EFF5" }}
+                            labelStyle={{ color: "#F1F2F6" }}
                             formatter={(v, n) =>
                               [typeof v === "number" ? v.toFixed(2) : String(v ?? "—"),
                                n === "score" ? "Indicator score" : "pHash similarity %"] as [string, string]}
                           />
                           {d.baseline_score != null && (
-                            <ReferenceLine y={d.baseline_score} stroke="#4CA6E8" strokeDasharray="5 4"
-                                           label={{ value: "baseline", fill: "#4CA6E8", fontSize: 10,
+                            <ReferenceLine y={d.baseline_score} stroke="#9B7BFF" strokeDasharray="5 4"
+                                           label={{ value: "baseline", fill: "#9B7BFF", fontSize: 10,
                                                     position: "insideTopLeft" }} />
                           )}
-                          <Line type="monotone" dataKey="score" stroke="#E9A33A" strokeWidth={2}
-                                dot={{ r: 2.5, fill: "#E9A33A" }} />
-                          <Line type="monotone" dataKey="similarity" stroke="#3FB98A" strokeWidth={1.4}
+                          <Line type="monotone" dataKey="score" stroke="#E5B85C" strokeWidth={2}
+                                dot={{ r: 2.5, fill: "#E5B85C" }} />
+                          <Line type="monotone" dataKey="similarity" stroke="#55C98A" strokeWidth={1.4}
                                 strokeDasharray="4 3" dot={false} />
                         </LineChart>
                       </ResponsiveContainer>

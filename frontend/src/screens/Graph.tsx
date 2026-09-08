@@ -24,18 +24,18 @@ type Payload = {
 };
 
 const KIND: Record<string, { colour: string; label: string }> = {
-  case:       { colour: "#9B96E8", label: "Case" },
-  evidence:   { colour: "#4CA6E8", label: "Evidence" },
-  hash:       { colour: "#00B4D8", label: "SHA-256 Digest" },
-  analysis:   { colour: "#A370F7", label: "Analysis Run" },
-  trace:      { colour: "#F77F00", label: "Spatial Visual Trace" },
-  frame:      { colour: "#6C7F94", label: "Frame" },
-  extraction: { colour: "#3FB98A", label: "Extraction step" },
-  identifier: { colour: "#E9A33A", label: "Media-derived identifier" },
-  origin:     { colour: "#E5605C", label: "Corpus copy / origin" },
-  copy:       { colour: "#E5605C", label: "Near-duplicate copy" },
-  campaign:   { colour: "#9B96E8", label: "Cross-case link" },
-  account:    { colour: "#D97706", label: "Recovered Account Handle" },
+  case:       { colour: "#8A94A8", label: "Case" },
+  evidence:   { colour: "#9B7BFF", label: "Evidence" },
+  hash:       { colour: "#6B7B99", label: "SHA-256 Digest" },
+  analysis:   { colour: "#B9A3FF", label: "Analysis Run" },
+  trace:      { colour: "#E5B85C", label: "Spatial Visual Trace" },
+  frame:      { colour: "#686E7D", label: "Frame" },
+  extraction: { colour: "#55C98A", label: "Extraction step" },
+  identifier: { colour: "#E5B85C", label: "Media-derived identifier" },
+  origin:     { colour: "#E05D6F", label: "Corpus copy / origin" },
+  copy:       { colour: "#E05D6F", label: "Near-duplicate copy" },
+  campaign:   { colour: "#B9A3FF", label: "Cross-case link" },
+  account:    { colour: "#D99B5C", label: "Recovered Account Handle" },
 };
 
 export default function GraphScreen() {
@@ -98,9 +98,9 @@ function GraphView({ data, sel, setSel }: {
         ),
       },
       style: {
-        background: "#121A24",
-        border: `1.5px solid ${active ? c : "#223141"}`,
-        boxShadow: active ? `0 0 0 3px ${c}33` : "0 6px 18px rgba(0,0,0,.32)",
+        background: "#10121A",
+        border: `1.5px solid ${active ? c : "#292D3A"}`,
+        boxShadow: active ? `0 0 0 3px ${c}33` : "0 6px 18px rgba(0,0,0,.45)",
         borderRadius: 10,
         padding: "7px 6px",
         width: 168,
@@ -115,11 +115,11 @@ function GraphView({ data, sel, setSel }: {
     label: e.relation,
     animated: e.observation !== "DIRECTLY_OBSERVED",
     style: {
-      stroke: e.observation === "DIRECTLY_OBSERVED" ? "#2C4157" : "#9B96E8",
+      stroke: e.observation === "DIRECTLY_OBSERVED" ? "#3A4052" : "#B9A3FF",
       strokeWidth: 1.4,
       strokeDasharray: e.observation === "DIRECTLY_OBSERVED" ? undefined : "5 4",
     },
-    markerEnd: { type: MarkerType.ArrowClosed, color: "#2C4157", width: 14, height: 14 },
+    markerEnd: { type: MarkerType.ArrowClosed, color: "#3A4052", width: 14, height: 14 },
   })), [data.edges]);
 
   const onNodeClick = useCallback<NodeMouseHandler>((_, node) => {
@@ -139,11 +139,11 @@ function GraphView({ data, sel, setSel }: {
         </div>
         <div className="flex items-center gap-4 text-[11px] text-ink2 bg-s2 border border-line px-3 py-1.5 rounded-lg">
           <div className="flex items-center gap-1.5" title="Taken directly from the media or evidence record.">
-            <span className="inline-block w-4 h-[2px] bg-[#4CA6E8]"></span>
+            <span className="inline-block w-4 h-[2px] bg-[#9B7BFF]"></span>
             <span className="font-medium text-ink">Directly Observed</span>
           </div>
           <div className="flex items-center gap-1.5" title="Suggested from relationships between observed evidence. Not proof of identity or involvement.">
-            <span className="inline-block w-4 h-[2px] border-b-2 border-dashed border-[#9B96E8]"></span>
+            <span className="inline-block w-4 h-[2px] border-b-2 border-dashed border-[#B9A3FF]"></span>
             <span className="font-medium text-ink">Inferred</span>
           </div>
         </div>
@@ -156,7 +156,7 @@ function GraphView({ data, sel, setSel }: {
           minZoom={0.15} maxZoom={2} proOptions={{ hideAttribution: true }}
           nodesDraggable nodesConnectable={false} elementsSelectable
         >
-          <Background color="#1A2634" gap={22} size={1} />
+          <Background color="#1D202B" gap={22} size={1} />
           <Controls showInteractive={false} />
         </ReactFlow>
       </div>
@@ -241,13 +241,13 @@ function GraphView({ data, sel, setSel }: {
             </div>
             <div className="mt-4 space-y-2.5 text-[11px] text-muted border-t border-line pt-3">
               <div className="flex items-start gap-2">
-                <svg width="24" height="12" className="mt-1 flex-shrink-0"><line x1="0" y1="6" x2="24" y2="6" stroke="#2C4157" strokeWidth="2" /></svg>
+                <svg width="24" height="12" className="mt-1 flex-shrink-0"><line x1="0" y1="6" x2="24" y2="6" stroke="#3A4052" strokeWidth="2" /></svg>
                 <div>
                   <span className="font-semibold text-ink">Directly observed:</span> Taken directly from the media or evidence record.
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <svg width="24" height="12" className="mt-1 flex-shrink-0"><line x1="0" y1="6" x2="24" y2="6" stroke="#9B96E8" strokeWidth="2" strokeDasharray="5 4" /></svg>
+                <svg width="24" height="12" className="mt-1 flex-shrink-0"><line x1="0" y1="6" x2="24" y2="6" stroke="#B9A3FF" strokeWidth="2" strokeDasharray="5 4" /></svg>
                 <div>
                   <span className="font-semibold text-ink">Inferred:</span> Suggested from relationships between observed evidence. Not proof of identity or involvement.
                 </div>

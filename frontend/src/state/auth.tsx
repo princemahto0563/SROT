@@ -135,7 +135,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0C1017] text-ink">
+      <div className="flex h-screen w-screen items-center justify-center bg-[#08090D] text-ink">
         <div className="flex flex-col items-center gap-3">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
           <div className="font-mono text-xs text-muted">Verifying police credentials…</div>
