@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: srot-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /api/health
+    disk:
+      name: srot-data
+      mountPath: /var/data
+      sizeGB: 2
+    envVars:
+      - key: SROT_DATA
+        value: /var/data
+      - key: CORS_ORIGINS
+        value: http://localhost:5177,http://127.0.0.1:5177
+      - key: DEMO_OFFICER_BADGE
+        value: DEMO-OFFICER
+      - key: DEMO_OFFICER_PASSWORD
+        sync: false
+      - key: DEMO_OFFICER_NAME
+        value: Insp. Vikramaditya (Cyber Ops)
+      - key: DEMO_OFFICER_ROLE
+        value: Senior Forensic Investigator
+      - key: DEMO_OFFICER_UNIT
+        value: Cyber Crime Investigation Unit
+      - key: HF_HUB_OFFLINE
+        value: "1"
+      - key: TRANSFORMERS_OFFLINE
+        value: "1"
