@@ -69,7 +69,7 @@ app = FastAPI(
 )
 cors_raw = os.environ.get(
     "CORS_ORIGINS",
-    "http://localhost:5177,http://127.0.0.1:5177,https://srot-umt3.vercel.app",
+    "http://localhost:5177,http://127.0.0.1:5177,https://srot-umt3.vercel.app,https://srot-henna.vercel.app",
 )
 allowed_origins_set = {
     "http://localhost:5177",
@@ -77,6 +77,7 @@ allowed_origins_set = {
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://srot-umt3.vercel.app",
+    "https://srot-henna.vercel.app",
 }
 for orig in cors_raw.split(","):
     orig_clean = orig.strip()
