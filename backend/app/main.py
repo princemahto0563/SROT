@@ -108,12 +108,6 @@ def _startup() -> None:
             neural_svc._ensure_loaded()
         except Exception:
             pass
-        if db.query(Case).count() == 0:
-            try:
-                import sys, subprocess
-                subprocess.Popen([sys.executable, "backend/seed.py"])
-            except Exception:
-                pass
     finally:
         db.close()
 
