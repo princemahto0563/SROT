@@ -102,6 +102,12 @@ def _startup() -> None:
     db = SessionLocal()
     try:
         auth_svc.seed_demo_officer(db)
+        if db.query(Case).count() == 0:
+            try:
+                import sys, subprocess
+                subprocess.Popen([sys.executable, "backend/seed.py"])
+            except Exception:
+                pass
     finally:
         db.close()
 
@@ -129,8 +135,8 @@ def login(payload: dict, db: Session = Depends(get_db)):
     if not badge_id or not password:
         raise HTTPException(status_code=401, detail="Badge ID and authorization password are required.")
 
-    officer = db.query(OfficerUser).filter(OfficerUser.badge_id == badge_id, OfficerUser.is_active == True).first()
-    if not officer or not auth_svc.verify_password(password, officer.password_hash):
+    officer = auth_svc.verify_officer_login(db, badge_id, password)
+    if not officer:
         raise HTTPException(status_code=401, detail="Invalid officer badge ID or authorization password.")
 
     raw_token, session = auth_svc.create_session(db, officer)
@@ -206,6 +212,19 @@ def model_status() -> dict[str, Any]:
     status = neural_svc.detector_status()
     status["provenance"] = neural_svc.model_provenance()
     return status
+
+
+@app.post("/api/system/seed")
+def trigger_seed(db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Seed demo corpus and demo cases if not already present."""
+    cases_count = db.query(Case).count()
+    if cases_count == 0:
+        try:
+            import sys, subprocess
+            subprocess.run([sys.executable, "backend/seed.py"], timeout=120)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Seeding failed: {e}")
+    return {"status": "ok", "cases": db.query(Case).count(), "corpus_items": db.query(CorpusItem).count()}
 
 
 # ── cases ────────────────────────────────────────────────────────────────────
