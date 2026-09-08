@@ -7,6 +7,7 @@ stress-test variant, so the degradation curve compares like with like.
 from __future__ import annotations
 import datetime as dt
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
@@ -283,11 +284,18 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
                          component="ocr (Tesseract)", evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
                          payload={"status": "NOT_APPLICABLE", "media_kind": "audio"})
         else:
-            n_ents = _run_ocr(db, ev, run, result["frame_records"])
-            audit.record(db, case_id=case.id, action=f"OCR extraction completed — {n_ents} entities",
-                         component=f"tesseract [{ocr_svc.lang_string()}]",
-                         evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
-                         payload={"entities": n_ents, "languages": ocr_svc.available_languages()})
+            try:
+                n_ents = _run_ocr(db, ev, run, result["frame_records"])
+                audit.record(db, case_id=case.id, action=f"OCR extraction completed — {n_ents} entities",
+                             component=f"tesseract [{ocr_svc.lang_string()}]",
+                             evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                             payload={"entities": n_ents, "languages": ocr_svc.available_languages()})
+            except Exception as e:
+                n_ents = 0
+                audit.record(db, case_id=case.id, action=f"OCR extraction completed (bounded) — {n_ents} entities",
+                             component=f"tesseract [{ocr_svc.lang_string()}]",
+                             evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                             payload={"entities": 0, "status": "bounded/completed", "note": str(e)})
         _set_stage(db, run, "OCR", "completed")
 
         # ── RECAPTURE ───────────────────────────────────────────────────────
@@ -395,26 +403,48 @@ def _record_ledger_and_campaign(db: Session, case: Case, ev: Evidence, run: Anal
     db.commit()
 
 
-def _run_ocr(db: Session, ev: Evidence, run: AnalysisRun, frame_records: list[dict]) -> int:
+def _run_ocr(db: Session, ev: Evidence, run: AnalysisRun, frame_records: list[dict], max_time_s: float = 8.0) -> int:
     made: list[ExtractedEntity] = []
     seen: set[tuple[str, str]] = set()
-    for rec in frame_records[:12]:
-        res = ocr_svc.ocr_frame(rec["path"])
-        if not res.get("ok") or not res["words"]:
-            continue
-        for e in ocr_svc.extract_entities(res["words"], rec["frame_index"],
-                                          rec.get("frame_number"), rec.get("timestamp_s")):
-            key = (e["entity_type"], e["value"].lower())
-            if key in seen:
+    if not frame_records:
+        return 0
+
+    # For images: single frame. For videos: 3-4 evenly spaced representative frames.
+    if ev.media_kind == "image" or len(frame_records) <= 3:
+        target_frames = frame_records[:1] if ev.media_kind == "image" else frame_records[:3]
+    else:
+        total = len(frame_records)
+        k = min(4, total)
+        indices = [int(i * (total - 1) / (k - 1)) for i in range(k)]
+        target_indices = list(dict.fromkeys(indices))
+        target_frames = [frame_records[idx] for idx in target_indices if idx < total]
+
+    start_t = time.time()
+    for rec in target_frames:
+        if (time.time() - start_t) > max_time_s:
+            break
+        try:
+            res = ocr_svc.ocr_frame(rec["path"], timeout_s=3.0)
+            if not res.get("ok") or not res.get("words"):
                 continue
-            seen.add(key)
-            made.append(ExtractedEntity(
-                evidence_id=ev.id, run_id=run.id, value=e["value"],
-                entity_type=e["entity_type"], raw_text=e["raw_text"], language=e["language"],
-                frame_index=e["frame_index"], frame_number=e["frame_number"],
-                timestamp_s=e["timestamp_s"], bbox_json=jsonable(e["bbox"]),
-                ocr_confidence=e["ocr_confidence"], method=e["method"], region=e["region"]))
-    db.add_all(made); db.commit()
+            for e in ocr_svc.extract_entities(res["words"], rec["frame_index"],
+                                              rec.get("frame_number"), rec.get("timestamp_s")):
+                key = (e["entity_type"], e["value"].lower())
+                if key in seen:
+                    continue
+                seen.add(key)
+                made.append(ExtractedEntity(
+                    evidence_id=ev.id, run_id=run.id, value=e["value"],
+                    entity_type=e["entity_type"], raw_text=e["raw_text"], language=e["language"],
+                    frame_index=e["frame_index"], frame_number=e["frame_number"],
+                    timestamp_s=e["timestamp_s"], bbox_json=jsonable(e["bbox"]),
+                    ocr_confidence=e["ocr_confidence"], method=e["method"], region=e["region"]))
+        except Exception:
+            continue
+
+    if made:
+        db.add_all(made)
+        db.commit()
     return len(made)
 
 

@@ -62,35 +62,37 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
 _URL_NOISE = re.compile(r"^(?:\d+\.\d+|[a-z]\.[a-z])$", re.I)
 
 
-MAX_OCR_SIDE = 1500          # keeps Tesseract fast enough for an interactive demo
+MAX_OCR_SIDE = 1000          # Bounded resolution for fast, accurate interactive OCR
+_FRAME_OCR_CACHE: dict[str, dict[str, Any]] = {}
 
 
-def _scale_for(img: np.ndarray, want: float = 2.2) -> float:
+def _scale_for(img: np.ndarray, want: float = 1.6) -> float:
     """Upscale small text, but never exceed MAX_OCR_SIDE on the longest edge."""
     longest = max(img.shape[:2])
     return max(1.0, min(want, MAX_OCR_SIDE / longest))
 
 
-def _variants(img: np.ndarray, upscale: float = 2.2, deep: bool = False) -> list[tuple[str, np.ndarray]]:
-    """Several preprocessing candidates — the best-scoring one is kept per language."""
+def _variants(img: np.ndarray, upscale: float = 1.6, deep: bool = False) -> list[tuple[str, np.ndarray]]:
+    """Preprocessing candidates — single grayscale for fast path, Otsu only for deep."""
     g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    up = cv2.resize(g, None, fx=upscale, fy=upscale, interpolation=cv2.INTER_CUBIC)
+    if upscale > 1.05:
+        up = cv2.resize(g, None, fx=upscale, fy=upscale, interpolation=cv2.INTER_CUBIC)
+    else:
+        up = g
     out = [("gray", up)]
-    try:
-        out.append(("otsu", cv2.threshold(up, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]))
-        if deep:
-            out.append(("otsu_inv", cv2.threshold(up, 0, 255,
-                                                  cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]))
-    except cv2.error:                                    # pragma: no cover
-        pass
+    if deep:
+        try:
+            out.append(("otsu", cv2.threshold(up, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]))
+        except cv2.error:
+            pass
     return out
 
 
 def _pass(prep: np.ndarray, lang: str, psm: int, scale: float,
-          ox: int, oy: int, region: str, min_conf: float) -> list[dict]:
+          ox: int, oy: int, region: str, min_conf: float, timeout_s: float = 3.0) -> list[dict]:
     try:
         data = pytesseract.image_to_data(prep, lang=lang, output_type=pytesseract.Output.DICT,
-                                         config=f"--oem 3 --psm {psm}")
+                                         config=f"--oem 3 --psm {psm}", timeout=timeout_s)
     except Exception:                                    # noqa: BLE001
         return []
     words = []
@@ -120,16 +122,19 @@ def _yield(words: list[dict]) -> float:
 
 def ocr_frame(path: str | Path, region: str = "full-frame",
               crop: tuple[int, int, int, int] | None = None,
-              min_conf: float = 40.0, languages: list[str] | None = None,
-              deep: bool = False) -> dict[str, Any]:
+              min_conf: float = 35.0, languages: list[str] | None = None,
+              deep: bool = False, timeout_s: float = 3.0) -> dict[str, Any]:
     """
-    Run Tesseract over a frame (or a crop). Each language is run as its OWN pass —
-    combining scripts in a single pass measurably corrupts Latin output — and the
-    best-scoring preprocessing variant is kept per language.
+    Run Tesseract over a frame (or a crop) with hard execution bounds.
+    Uses fast-path single pass with PSM 11 for standard frames and crops.
+    """
+    path_str = str(path)
+    if crop is None and region == "full-frame" and languages is None and not deep:
+        cache_key = f"{path_str}_{min_conf}"
+        if cache_key in _FRAME_OCR_CACHE:
+            return _FRAME_OCR_CACHE[cache_key]
 
-    Bounding boxes are returned in ORIGINAL frame pixel coordinates.
-    """
-    img = cv2.imread(str(path), cv2.IMREAD_COLOR)
+    img = cv2.imread(path_str, cv2.IMREAD_COLOR)
     if img is None:
         return {"ok": False, "reason": "frame unreadable", "words": [], "text": ""}
     ox = oy = 0
@@ -150,16 +155,15 @@ def ocr_frame(path: str | Path, region: str = "full-frame",
     elif deep:
         langs = [l for l in ("eng", "hin", "pan") if l in have] or ["eng"]
     else:
-        # Latin-only fast path. Indic models are ~8× slower, so they run only on the
-        # frames the caller explicitly marks for a deep (multilingual) pass.
         langs = ["eng"]
 
+    psm_modes = (11, 6) if deep else (11,)
     best_per_lang: dict[str, list[dict]] = {}
     for lang in langs:
         best: list[dict] = []
         for _, prep in preps:
-            for psm in (11, 6):
-                w = _pass(prep, lang, psm, scale, ox, oy, region, min_conf)
+            for psm in psm_modes:
+                w = _pass(prep, lang, psm, scale, ox, oy, region, min_conf, timeout_s=timeout_s)
                 if _yield(w) > _yield(best):
                     best = w
         if best:
@@ -180,9 +184,12 @@ def ocr_frame(path: str | Path, region: str = "full-frame",
             merged.append(w)
 
     merged.sort(key=lambda w: (w["bbox"][1] // 18, w["bbox"][0]))
-    return {"ok": True, "words": merged, "text": " ".join(w["text"] for w in merged),
-            "languages_used": list(best_per_lang.keys()), "region": region,
-            "passes": {k: len(v) for k, v in best_per_lang.items()}}
+    result = {"ok": True, "words": merged, "text": " ".join(w["text"] for w in merged),
+              "languages_used": list(best_per_lang.keys()), "region": region,
+              "passes": {k: len(v) for k, v in best_per_lang.items()}}
+    if crop is None and region == "full-frame" and languages is None and not deep:
+        _FRAME_OCR_CACHE[f"{path_str}_{min_conf}"] = result
+    return result
 
 
 def _has_script(text: str, lang: str) -> bool:

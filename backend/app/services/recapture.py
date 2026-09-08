@@ -148,7 +148,9 @@ def ocr_ui_regions(frame_paths: list[str], static: dict, letterbox: dict) -> dic
     recovered: list[dict] = []
     ui_hits: list[dict] = []
 
-    for fi, p in enumerate(frame_paths[:8]):
+    # Bounded representative sample: scan at most 2 frames
+    sample_frames = frame_paths[:2] if len(frame_paths) <= 2 else [frame_paths[0], frame_paths[-1]]
+    for fi, p in enumerate(sample_frames):
         img = _load(p)
         if img is None:
             continue
@@ -162,8 +164,11 @@ def ocr_ui_regions(frame_paths: list[str], static: dict, letterbox: dict) -> dic
             candidates.append(("static-top-band", (0, 0, w, min(h, tb + 12))))
 
         for region, crop in candidates:
-            res = ocr_svc.ocr_frame(p, region=region, crop=crop, min_conf=35.0)
-            if not res.get("ok") or not res["words"]:
+            try:
+                res = ocr_svc.ocr_frame(p, region=region, crop=crop, min_conf=35.0, timeout_s=2.0)
+            except Exception:
+                continue
+            if not res.get("ok") or not res.get("words"):
                 continue
             regions_scanned.append({"frame_index": fi, "region": region,
                                     "words": len(res["words"]),
