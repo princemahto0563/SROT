@@ -1,0 +1,11 @@
+backend
+data
+venv
+.git
+.agents
+.gemini
+node_modules
+dist
+scratch
+*.mp4
+*.zip
