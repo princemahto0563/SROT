@@ -144,49 +144,54 @@ def score_media(path: Path, scratch: Path, media_kind: str,
     }
 
 
+import threading
+_pipeline_lock = threading.Lock()
+
+
 # ── main analysis ────────────────────────────────────────────────────────────
 def run_analysis(evidence_id: int, run_id: int) -> None:
-    db: Session = SessionLocal()
-    try:
-        ev = db.get(Evidence, evidence_id)
-        run = db.get(AnalysisRun, run_id)
-        case = db.get(Case, ev.case_id)
-        run.status = "running"
-        run.stages_json = {s: "queued" for s in STAGES}
-        db.add(run); db.commit()
+    with _pipeline_lock:
+        db: Session = SessionLocal()
+        try:
+            ev = db.get(Evidence, evidence_id)
+            run = db.get(AnalysisRun, run_id)
+            case = db.get(Case, ev.case_id)
+            run.status = "running"
+            run.stages_json = {s: "queued" for s in STAGES}
+            db.add(run); db.commit()
 
-        work = Path(WORK_DIR) / ev.evidence_ref
-        work.mkdir(parents=True, exist_ok=True)
-        src = Path(ev.stored_path)
+            work = Path(WORK_DIR) / ev.evidence_ref
+            work.mkdir(parents=True, exist_ok=True)
+            src = Path(ev.stored_path)
 
-        # ── INGEST facts ────────────────────────────────────────────────────
-        _set_stage(db, run, "INGEST", "running")
-        if ev.media_kind == "image":
-            probe = mediainfo.probe_image(src)
-        else:
-            probe = mediainfo.probe_video(src)
-        exif = mediainfo.read_exif(src) if ev.media_kind == "image" else {}
-        c2pa = mediainfo.detect_c2pa(src)
-        ev.width = probe.get("width"); ev.height = probe.get("height")
-        ev.duration_s = probe.get("duration_s"); ev.fps = probe.get("fps")
-        ev.video_codec = probe.get("video_codec"); ev.audio_codec = probe.get("audio_codec")
-        ev.container_format = probe.get("container_format"); ev.encoder_tag = probe.get("encoder_tag")
-        ev.has_audio = bool(probe.get("has_audio"))
-        ev.probe_json = jsonable({k: v for k, v in probe.items() if k != "raw"})
-        ev.exif_json = jsonable(exif)
-        ev.c2pa_present = bool(c2pa.get("present")); ev.c2pa_note = c2pa.get("note", "")
-        db.add(ev); db.commit()
-        audit.record(db, case_id=case.id, action="Container/metadata inspection completed",
-                     component="mediainfo (ffprobe/PIL)", evidence_ref=ev.evidence_ref,
-                     evidence_hash=ev.sha256,
-                     payload={"width": ev.width, "height": ev.height,
-                              "duration_s": ev.duration_s, "encoder_tag": ev.encoder_tag,
-                              "c2pa_present": ev.c2pa_present})
-        _set_stage(db, run, "INGEST", "completed")
+            # ── INGEST facts ────────────────────────────────────────────────────
+            _set_stage(db, run, "INGEST", "running")
+            if ev.media_kind == "image":
+                probe = mediainfo.probe_image(src)
+            else:
+                probe = mediainfo.probe_video(src)
+            exif = mediainfo.read_exif(src) if ev.media_kind == "image" else {}
+            c2pa = mediainfo.detect_c2pa(src)
+            ev.width = probe.get("width"); ev.height = probe.get("height")
+            ev.duration_s = probe.get("duration_s"); ev.fps = probe.get("fps")
+            ev.video_codec = probe.get("video_codec"); ev.audio_codec = probe.get("audio_codec")
+            ev.container_format = probe.get("container_format"); ev.encoder_tag = probe.get("encoder_tag")
+            ev.has_audio = bool(probe.get("has_audio"))
+            ev.probe_json = jsonable({k: v for k, v in probe.items() if k != "raw"})
+            ev.exif_json = jsonable(exif)
+            ev.c2pa_present = bool(c2pa.get("present")); ev.c2pa_note = c2pa.get("note", "")
+            db.add(ev); db.commit()
+            audit.record(db, case_id=case.id, action="Container/metadata inspection completed",
+                         component="mediainfo (ffprobe/PIL)", evidence_ref=ev.evidence_ref,
+                         evidence_hash=ev.sha256,
+                         payload={"width": ev.width, "height": ev.height,
+                                  "duration_s": ev.duration_s, "encoder_tag": ev.encoder_tag,
+                                  "c2pa_present": ev.c2pa_present})
+            _set_stage(db, run, "INGEST", "completed")
 
-        # ── ANALYSIS ────────────────────────────────────────────────────────
-        _set_stage(db, run, "ANALYSIS", "running")
-        result = score_media(src, work / "frames", ev.media_kind, max_frames=16)
+            # ── ANALYSIS ────────────────────────────────────────────────────────
+            _set_stage(db, run, "ANALYSIS", "running")
+            result = score_media(src, work / "frames", ev.media_kind, max_frames=8)
         if result.get("error") and result.get("score") is None:
             run.status = "failed"; run.error = result["error"]
             _set_stage(db, run, "ANALYSIS", "failed"); db.commit()
