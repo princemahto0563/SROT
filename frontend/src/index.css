@@ -2,55 +2,106 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --color-bg: 244 245 248;           /* #F4F5F8 Clean off-white */
+  --color-surface: 255 255 255;       /* #FFFFFF Pure white */
+  --color-s2: 236 238 244;            /* #ECEEF4 Secondary well */
+  --color-s3: 226 229 238;            /* #E2E5EE Tertiary surface */
+  --color-line: 216 221 232;          /* #D8DDE8 Crisp light border */
+  --color-line-soft: 232 235 242;     /* #E8EBF2 Subtle divider */
+  --color-ink: 18 22 33;              /* #121621 Deep graphite text */
+  --color-ink2: 74 82 102;            /* #4A5266 Slate secondary text */
+  --color-muted: 114 122 142;         /* #727A8E Cool gray metadata */
+  --color-accent: 112 75 234;         /* #704BEA High-contrast forensic violet */
+  --color-accent-bright: 92 54 219;   /* #5C36DB Active state */
+  --color-accent-ink: 255 255 255;    /* #FFFFFF White text on solid accent */
+  --color-amber: 196 132 29;          /* #C4841D Warning */
+  --color-danger: 212 58 78;          /* #D43A4E Danger */
+  --color-ok: 30 158 100;             /* #1E9E64 Verified */
+  --color-violet: 112 75 234;         /* #704BEA */
+  --panel-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.03);
+}
+
+.dark {
+  color-scheme: dark;
+  --color-bg: 8 9 13;                 /* #08090D Obsidian */
+  --color-surface: 16 18 26;          /* #10121A Primary graphite */
+  --color-s2: 23 26 36;               /* #171A24 Elevated graphite */
+  --color-s3: 29 32 43;               /* #1D202B Subtle surface */
+  --color-line: 41 45 58;             /* #292D3A Structural border */
+  --color-line-soft: 32 35 48;        /* #202330 Soft divider */
+  --color-ink: 241 242 246;           /* #F1F2F6 Primary cool silver */
+  --color-ink2: 146 151 166;          /* #9297A6 Secondary slate */
+  --color-muted: 104 110 125;         /* #686E7D Muted gray */
+  --color-accent: 155 123 255;        /* #9B7BFF Forensic violet */
+  --color-accent-bright: 185 163 255; /* #B9A3FF Active bright violet */
+  --color-accent-ink: 8 9 13;         /* #08090D Obsidian text on accent */
+  --color-amber: 229 184 92;          /* #E5B85C Amber */
+  --color-danger: 224 93 111;         /* #E05D6F Danger red */
+  --color-ok: 85 201 138;             /* #55C98A Verified green */
+  --color-violet: 185 163 255;        /* #B9A3FF */
+  --panel-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.45);
+}
+
 @layer base {
-  :root { color-scheme: dark; }
   html, body, #root { height: 100%; }
   body {
     @apply bg-bg text-ink font-sans antialiased;
     font-feature-settings: "cv02","cv03","cv04";
   }
-  ::selection { background: #9B7BFF; color: #08090D; }
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::selection { background: rgb(var(--color-accent)); color: rgb(var(--color-accent-ink)); }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #292D3A99; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
-  ::-webkit-scrollbar-thumb:hover { background: #3B4052; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb { 
+    background: rgb(var(--color-line) / 0.7); 
+    border-radius: 8px; 
+    border: 2px solid transparent; 
+    background-clip: content-box; 
+  }
+  ::-webkit-scrollbar-thumb:hover { 
+    background: rgb(var(--color-muted) / 0.8); 
+    background-clip: content-box; 
+  }
 }
 
 @layer components {
-  .panel { @apply bg-surface border border-line rounded-xl; }
-  .panel-2 { @apply bg-s2 border border-lineSoft rounded-lg; }
-  .lbl { @apply text-[10.5px] font-semibold tracking-[0.13em] uppercase text-muted; }
+  .panel { @apply bg-surface border border-line rounded-xl transition-colors duration-150; }
+  .panel-2 { @apply bg-s2 border border-lineSoft rounded-lg transition-colors duration-150; }
+  .lbl { @apply text-[10px] font-semibold tracking-[0.11em] uppercase text-muted select-none; }
   .kv { @apply flex items-start justify-between gap-4 py-2.5 border-b border-lineSoft last:border-0; }
   .kv dt { @apply text-[12.5px] text-ink2 shrink-0; }
   .kv dd { @apply text-[12.5px] font-medium text-ink text-right; }
-  .btn { @apply inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors duration-150 select-none; }
-  .btn-primary { @apply btn bg-accent text-[#08090D] hover:brightness-110; }
+  .btn { @apply inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[12.5px] font-semibold transition-colors duration-150 select-none; }
+  .btn-primary { @apply btn bg-accent text-accent-ink hover:brightness-105 shadow-sm; }
   .btn-ghost { @apply btn border border-line text-ink2 hover:text-ink hover:bg-s2; }
-  .chip { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[10.5px] font-semibold uppercase tracking-[0.06em]; }
-  .fade-in { animation: fadeIn .22s ease both; }
+  .chip { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em]; }
+  .fade-in { animation: fadeIn .2s cubic-bezier(0.16, 1, 0.3, 1) both; }
   .skeleton { @apply bg-s3/70; animation: pulse 1.5s ease-in-out infinite; }
-  .link { @apply text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent; }
-  .btn:disabled { @apply opacity-45 cursor-not-allowed hover:brightness-100; }
+  .link { @apply text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent font-medium; }
+  .btn:disabled { @apply opacity-40 cursor-not-allowed hover:brightness-100; }
 }
 
 @keyframes pulse { 0%,100% { opacity: .55 } 50% { opacity: .95 } }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(3px) } to { opacity: 1; transform: none } }
 @keyframes barGrow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
 .bar-grow { transform-origin: left; animation: barGrow .5s cubic-bezier(.2,.8,.3,1) both; }
 
 /* React Flow theme overrides */
 .react-flow__attribution { display: none; }
-.react-flow__edge-text { font-size: 9.5px; font-weight: 600; fill: #9297A6; }
-.react-flow__edge-textbg { fill: #08090D; }
+.react-flow__edge-text { font-size: 9.5px; font-weight: 600; fill: rgb(var(--color-ink2)); }
+.react-flow__edge-textbg { fill: rgb(var(--color-bg)); }
 .react-flow__controls-button {
-  background: #171A24 !important; border-bottom: 1px solid #292D3A !important; fill: #9297A6 !important;
+  background: rgb(var(--color-s2)) !important;
+  border-bottom: 1px solid rgb(var(--color-line)) !important;
+  fill: rgb(var(--color-ink2)) !important;
 }
-.react-flow__controls-button:hover { background: #1D202B !important; }
+.react-flow__controls-button:hover { background: rgb(var(--color-s3)) !important; }
 
 /* Report print */
 @media print {
   .no-print { display: none !important; }
-  body { background: #fff !important; }
+  body { background: #fff !important; color: #000 !important; }
   .report-sheet { box-shadow: none !important; border: 0 !important; margin: 0 !important; padding: 0 !important; max-width: none !important; }
   @page { size: A4; margin: 14mm; }
 }

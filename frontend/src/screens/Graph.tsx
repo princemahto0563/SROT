@@ -7,6 +7,7 @@ import "@xyflow/react/dist/style.css";
 import { Async, Chip, EmptyState, Field, Notice, PageHead, Panel } from "../components/ui";
 import { RequireEvidence } from "../components/guards";
 import { useApi, fmtDate, fmtNum } from "../lib/api";
+import { useTheme } from "../state/theme";
 
 type GNode = {
   key: string; kind: string; label: string; sublabel: string | null;
@@ -71,6 +72,9 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
 function GraphView({ data, sel, setSel }: {
   data: Payload; sel: GNode | null; setSel: (n: GNode | null) => void;
 }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   const byKey = useMemo(
     () => Object.fromEntries(data.nodes.map((n) => [n.key, n])),
     [data.nodes],
@@ -98,15 +102,15 @@ function GraphView({ data, sel, setSel }: {
         ),
       },
       style: {
-        background: "#10121A",
-        border: `1.5px solid ${active ? c : "#292D3A"}`,
-        boxShadow: active ? `0 0 0 3px ${c}33` : "0 6px 18px rgba(0,0,0,.45)",
+        background: isDark ? "#10121A" : "#FFFFFF",
+        border: `1.5px solid ${active ? c : (isDark ? "#292D3A" : "#D8DDE8")}`,
+        boxShadow: active ? `0 0 0 3px ${c}33` : (isDark ? "0 6px 18px rgba(0,0,0,.45)" : "0 4px 12px rgba(0,0,0,.06)"),
         borderRadius: 10,
         padding: "7px 6px",
         width: 168,
       },
     };
-  }), [data.nodes, sel]);
+  }), [data.nodes, sel, isDark]);
 
   const edges: Edge[] = useMemo(() => data.edges.map((e) => ({
     id: e.id,
@@ -115,12 +119,12 @@ function GraphView({ data, sel, setSel }: {
     label: e.relation,
     animated: e.observation !== "DIRECTLY_OBSERVED",
     style: {
-      stroke: e.observation === "DIRECTLY_OBSERVED" ? "#3A4052" : "#B9A3FF",
+      stroke: e.observation === "DIRECTLY_OBSERVED" ? (isDark ? "#3A4052" : "#8A94A8") : (isDark ? "#B9A3FF" : "#704BEA"),
       strokeWidth: 1.4,
       strokeDasharray: e.observation === "DIRECTLY_OBSERVED" ? undefined : "5 4",
     },
-    markerEnd: { type: MarkerType.ArrowClosed, color: "#3A4052", width: 14, height: 14 },
-  })), [data.edges]);
+    markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? "#3A4052" : "#8A94A8", width: 14, height: 14 },
+  })), [data.edges, isDark]);
 
   const onNodeClick = useCallback<NodeMouseHandler>((_, node) => {
     setSel(byKey[node.id] ?? null);
@@ -156,7 +160,7 @@ function GraphView({ data, sel, setSel }: {
           minZoom={0.15} maxZoom={2} proOptions={{ hideAttribution: true }}
           nodesDraggable nodesConnectable={false} elementsSelectable
         >
-          <Background color="#1D202B" gap={22} size={1} />
+          <Background color={isDark ? "#1D202B" : "#D8DDE8"} gap={22} size={1} />
           <Controls showInteractive={false} />
         </ReactFlow>
       </div>

@@ -67,7 +67,7 @@ export default function Dashboard() {
             <ScanSearch size={13} className="text-accent" />
             <span>Forensic Assessment</span>
           </Link>
-          <Link to="/analysis" className="btn btn-ghost text-xs py-1 px-2.5 flex items-center gap-1.5">
+          <Link to="/origin" className="btn btn-ghost text-xs py-1 px-2.5 flex items-center gap-1.5">
             <Eye size={13} className="text-ok" />
             <span>Visual Traces</span>
           </Link>

@@ -1,11 +1,14 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ShieldCheck, Lock, UserCheck, AlertCircle, KeyRound, Terminal, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Lock, UserCheck, AlertCircle, KeyRound, Terminal, CheckCircle2, Sun, Moon } from "lucide-react";
 import { useAuth } from "../state/auth";
+import { useTheme } from "../state/theme";
+import { SrotLogo } from "../components/SrotLogo";
 
 export default function Login() {
   const { login } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -41,41 +44,31 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[#08090D] px-4 py-8 text-ink selection:bg-accent/30">
+    <div className="relative flex min-h-screen w-full items-center justify-center bg-bg px-4 py-8 text-ink selection:bg-accent/30 transition-colors duration-150">
+      {/* Theme toggle in corner */}
+      <div className="absolute top-4 right-4 z-10">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-surface text-ink2 shadow-sm hover:bg-s2 hover:text-ink transition-colors"
+          title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+          aria-label="Toggle theme"
+        >
+          {theme === "dark" ? <Sun size={15} className="text-amber" /> : <Moon size={15} className="text-accent" />}
+        </button>
+      </div>
+
       {/* Background ambient forensic grid */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(155,123,255,0.12),rgba(255,255,255,0))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(155,123,255,0.08),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(155,123,255,0.12),rgba(255,255,255,0))]" />
 
       <div className="relative w-full max-w-md">
-        {/* Header Branding */}
+        {/* Header Branding with new custom mark */}
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3.5 flex h-14 w-14 items-center justify-center rounded-xl border border-accent/40 bg-accent/10 shadow-[0_0_24px_rgba(155,123,255,0.18)]">
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#9B7BFF"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 2 4 5.5v6c0 5 3.4 9.2 8 10.5 4.6-1.3 8-5.5 8-10.5v-6z" />
-              <circle cx="12" cy="11" r="3" />
-              <path d="m14.2 13.2 2.1 2.1" />
-            </svg>
-          </div>
-          <div className="font-mono text-2xl font-bold tracking-[0.2em] text-ink">SROT</div>
-          <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
-            Source Tracing &amp; Recapture Origin Toolkit
-          </div>
-          <div className="mt-0.5 text-[10px] text-muted">
-            LogicaLoom · Law Enforcement Digital Forensics Console
-          </div>
+          <SrotLogo size="lg" />
         </div>
 
-        {/* Main Card */}
-        <div className="rounded-xl border border-line bg-surface/90 p-6 shadow-2xl backdrop-blur-md">
+        {/* Main Authentication Card */}
+        <div className="rounded-xl border border-line bg-surface p-6 shadow-panel backdrop-blur-md transition-colors duration-150">
           {/* Gate Badge */}
           <div className="mb-4 flex items-center justify-between border-b border-line pb-3">
             <div className="flex items-center gap-2">
@@ -90,7 +83,7 @@ export default function Login() {
           </div>
 
           {/* Statutory / Warning notice */}
-          <div className="mb-5 rounded-lg border border-line/60 bg-s2/50 p-2.5 text-[10.5px] leading-relaxed text-muted">
+          <div className="mb-5 rounded-lg border border-line/70 bg-s2/60 p-2.5 text-[10.5px] leading-relaxed text-muted">
             <span className="font-semibold text-ink2">AUTHORIZED LAW ENFORCEMENT &amp; FORENSICS ACCESS ONLY:</span>{" "}
             Unauthorized access attempts are monitored and recorded. Cryptographic evidence chains are sealed.
           </div>
@@ -160,11 +153,11 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-accent/80 bg-accent py-2.5 text-xs font-semibold text-[#08090D] shadow-md transition hover:bg-accentBright disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-accent/80 bg-accent py-2.5 text-xs font-semibold text-accent-ink shadow-md transition hover:bg-accentBright disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <>
-                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#08090D] border-t-transparent" />
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-accent-ink border-t-transparent" />
                   <span>Verifying Credentials…</span>
                 </>
               ) : (
@@ -186,7 +179,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={fillDemoCredentials}
-                className="flex items-center gap-1 rounded border border-line/80 bg-s2 px-2 py-0.5 text-[10.5px] font-medium text-accent hover:border-accent hover:bg-s3 transition"
+                className="flex items-center gap-1 rounded border border-line bg-s2 px-2 py-0.5 text-[10.5px] font-medium text-accent hover:border-accent hover:bg-s3 transition"
               >
                 <CheckCircle2 size={11} /> Fill Demo Badge
               </button>

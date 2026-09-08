@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route, Outlet } from "react-router-dom";
 import Shell from "./components/Shell";
 import { SessionProvider } from "./state/session";
 import { AuthProvider, ProtectedRoute } from "./state/auth";
+import { ThemeProvider } from "./state/theme";
 import Login from "./screens/Login";
 import Dashboard from "./screens/Dashboard";
 import Intake from "./screens/Intake";
@@ -32,29 +33,31 @@ function ProtectedLayout() {
 
 export default function App() {
   return (
-    <HashRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route element={<ProtectedLayout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/upload" element={<Intake />} />
-            <Route path="/analysis" element={<Analysis />} />
-            <Route path="/neural" element={<Neural />} />
-            <Route path="/origin" element={<OriginTrace />} />
-            <Route path="/recapture" element={<Recapture />} />
-            <Route path="/entities" element={<Entities />} />
-            <Route path="/graph" element={<GraphScreen />} />
-            <Route path="/cross-case" element={<CrossCase />} />
-            <Route path="/stress" element={<Stress />} />
-            <Route path="/timeline" element={<Timeline />} />
-            <Route path="/benchmark" element={<Benchmark />} />
-            <Route path="/audit" element={<Audit />} />
-            <Route path="/packet" element={<Packet />} />
-            <Route path="*" element={<Dashboard />} />
-          </Route>
-        </Routes>
-      </AuthProvider>
-    </HashRouter>
+    <ThemeProvider>
+      <HashRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<ProtectedLayout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/upload" element={<Intake />} />
+              <Route path="/analysis" element={<Analysis />} />
+              <Route path="/neural" element={<Neural />} />
+              <Route path="/origin" element={<OriginTrace />} />
+              <Route path="/recapture" element={<Recapture />} />
+              <Route path="/entities" element={<Entities />} />
+              <Route path="/graph" element={<GraphScreen />} />
+              <Route path="/cross-case" element={<CrossCase />} />
+              <Route path="/stress" element={<Stress />} />
+              <Route path="/timeline" element={<Timeline />} />
+              <Route path="/benchmark" element={<Benchmark />} />
+              <Route path="/audit" element={<Audit />} />
+              <Route path="/packet" element={<Packet />} />
+              <Route path="*" element={<Dashboard />} />
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </HashRouter>
+    </ThemeProvider>
   );
 }
