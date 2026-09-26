@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { Async, Chip, EmptyState, Field, Meter, Notice, PageHead, Panel, Table, Row, Cell } from "../components/ui";
+import { Async, Button, Chip, EmptyState, Field, Meter, Notice, PageHead, Panel, Table, Row, Cell } from "../components/ui";
 import { RequireEvidence } from "../components/guards";
+import { useSession } from "../state/session";
 import { useApi, fmtNum, authenticatedUrl } from "../lib/api";
+import type { CaseComparisonPayload } from "../lib/api";
+import { Scale, QrCode } from "lucide-react";
 
 type Ent = {
   value: string; entity_type: string; raw_text: string; language: string;
@@ -23,13 +26,21 @@ const typeTone = (t: string) =>
   : t === "URL" ? "violet" : "muted";
 
 export default function Entities() {
-  return <RequireEvidence>{(ev) => <Body evidenceRef={ev.evidence_ref} />}</RequireEvidence>;
+  return <RequireEvidence>{(ev) => <Body key={ev.evidence_ref} evidenceRef={ev.evidence_ref} />}</RequireEvidence>;
 }
 
 function Body({ evidenceRef }: { evidenceRef: string }) {
   const e = useApi<Payload>(`/evidence/${evidenceRef}/entities`);
+  const { caseRef } = useSession();
+  const comparison = useApi<CaseComparisonPayload>(caseRef ? `/cases/${caseRef}/comparison` : null);
   const [sel, setSel] = useState<number>(0);
   const [showLanguages, setShowLanguages] = useState(false);
+  const [mode, setMode] = useState<"current" | "diff">("current");
+
+  const activeComp = comparison.data?.comparisons?.find(
+    (c) => c.derivative_evidence_ref === evidenceRef
+  );
+  const isRef = comparison.data?.reference?.evidence_ref === evidenceRef;
 
   return (
     <>
@@ -40,6 +51,130 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
              with a recorded confidence. They are media-derived identifiers — SROT does not resolve
              who owns them."
       />
+
+      {/* Forensic Differencing Perspective Switch */}
+      {comparison.data?.has_reference && comparison.data.reference && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-accent/25 bg-accent/[0.03] p-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Scale size={15} className="text-accent" />
+            <span className="text-[11.5px] font-bold text-ink">Comparative Text Perspective:</span>
+            <span className="text-[11.5px] text-muted">
+              {isRef ? "Reference Item Baseline" : `Case Reference: ${comparison.data.reference.evidence_ref} ⟷ Derivative: ${evidenceRef}`}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Button
+              tone={mode === "current" ? "primary" : "ghost"}
+              className="text-xs py-0.5 px-2.5"
+              onClick={() => setMode("current")}
+            >
+              Current Item Identifiers
+            </Button>
+            {!isRef && (
+              <Button
+                tone={mode === "diff" ? "primary" : "ghost"}
+                className="text-xs py-0.5 px-2.5"
+                onClick={() => setMode("diff")}
+              >
+                Text Differences (Diff View)
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {mode === "diff" && activeComp ? (
+        <div className="space-y-4 mb-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Added in derivative */}
+            <div className="rounded-lg border border-danger/30 bg-danger/[0.04] p-3.5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-danger uppercase tracking-wider">
+                  Added in Derivative (+{activeComp.identifiers.added_count})
+                </span>
+                <Chip tone="danger">{activeComp.identifiers.added_count}</Chip>
+              </div>
+              {activeComp.identifiers.added.length === 0 ? (
+                <div className="text-[11.5px] text-muted py-2">No new text elements added.</div>
+              ) : (
+                <ul className="space-y-2">
+                  {activeComp.identifiers.added.map((it, idx) => (
+                    <li key={idx} className="rounded border border-line bg-surface p-2 text-[11.5px]">
+                      <div className="flex items-center gap-1.5">
+                        <Chip tone="danger" className="text-[9px] py-0 px-1">{it.entity_type}</Chip>
+                        <span className="font-mono font-semibold text-ink break-all">{it.value}</span>
+                      </div>
+                      <div className="text-[10px] text-muted mt-1">{it.observation}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Removed from reference */}
+            <div className="rounded-lg border border-line bg-s2/40 p-3.5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-muted uppercase tracking-wider">
+                  Removed from Reference (-{activeComp.identifiers.removed_count})
+                </span>
+                <Chip tone="muted">{activeComp.identifiers.removed_count}</Chip>
+              </div>
+              {activeComp.identifiers.removed.length === 0 ? (
+                <div className="text-[11.5px] text-muted py-2">No reference text was erased.</div>
+              ) : (
+                <ul className="space-y-2">
+                  {activeComp.identifiers.removed.map((it, idx) => (
+                    <li key={idx} className="rounded border border-line bg-surface p-2 text-[11.5px]">
+                      <div className="flex items-center gap-1.5">
+                        <Chip tone="muted" className="text-[9px] py-0 px-1">{it.entity_type}</Chip>
+                        <span className="font-mono text-muted line-through break-all">{it.value}</span>
+                      </div>
+                      <div className="text-[10px] text-muted mt-1">{it.observation}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* QR Code & Payment Matrix Card */}
+            <div className="rounded-lg border border-accent/30 bg-accent/[0.04] p-3.5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-accent uppercase tracking-wider flex items-center gap-1">
+                  <QrCode size={13} />
+                  <span>QR Code &amp; UPI Matrix</span>
+                </span>
+                <Chip tone={activeComp.identifiers.qr?.detected ? "amber" : "muted"}>
+                  {activeComp.identifiers.qr?.detected ? "DETECTED" : "NONE"}
+                </Chip>
+              </div>
+
+              {activeComp.identifiers.qr?.detected ? (
+                <div className="space-y-2 text-[11.5px]">
+                  <div className="rounded border border-line bg-surface p-2">
+                    <span className="block text-[10px] uppercase font-semibold text-muted">QR Status</span>
+                    <span className="font-semibold text-ink">{activeComp.identifiers.qr.status}</span>
+                  </div>
+                  {activeComp.identifiers.qr.coordinates && (
+                    <div className="rounded border border-line bg-surface p-2">
+                      <span className="block text-[10px] uppercase font-semibold text-muted">Bounding Box Coordinates</span>
+                      <span className="font-mono text-[11px] text-accent">
+                        [x={activeComp.identifiers.qr.coordinates[0]}, y={activeComp.identifiers.qr.coordinates[1]}, w={activeComp.identifiers.qr.coordinates[2]}, h={activeComp.identifiers.qr.coordinates[3]}]
+                      </span>
+                    </div>
+                  )}
+                  <div className="text-[10.5px] text-muted leading-relaxed mt-2">
+                    Evidence Label: <span className="font-semibold text-ink2">{activeComp.identifiers.evidence_label}</span> (does not identify recipient).
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[11.5px] text-muted py-2">
+                  No QR matrix detected in this derivative.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <Async state={e} rows={5}>
         {(d) => {
@@ -55,7 +190,7 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
           ) : (
             <>
               <div className="mb-4 flex flex-wrap items-center gap-2.5">
-                <Chip tone="muted" dot={false}>{ents.length} identifiers</Chip>
+                <Chip tone="muted" dot={false}>{ents.length} identifiers in this file</Chip>
                 {langs.length > 0 && (
                   <div className="flex items-center gap-2">
                     <Chip tone="muted" dot={false}>
@@ -150,6 +285,7 @@ function Highlighted({ ent }: { ent: Ent }) {
     <>
       <div className="relative mx-auto w-fit overflow-hidden rounded-lg border border-line bg-black">
         <img
+          key={ent.frame_image_url}
           src={authenticatedUrl(ent.frame_image_url)}
           alt={`Frame ${ent.frame_index} containing ${ent.entity_type}`}
           className="block max-h-[420px] w-auto"

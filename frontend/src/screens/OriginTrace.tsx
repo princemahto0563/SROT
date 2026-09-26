@@ -9,7 +9,7 @@ import type { Origin } from "../lib/api";
 export default function OriginTrace() {
   return (
     <RequireEvidence>
-      {(ev) => <Body evidenceRef={ev.evidence_ref} />}
+      {(ev) => <Body key={ev.evidence_ref} evidenceRef={ev.evidence_ref} />}
     </RequireEvidence>
   );
 }
@@ -21,8 +21,8 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
     <>
       <PageHead
         eyebrow="Step 3 · Origin trace"
-        title="Earliest Known Copy in Searched Reference Corpus"
-        sub="Similarity fingerprints (perceptual hashes) survive re-encoding, rescaling, cropping and metadata removal. Matching is performed across normalized views against the searched reference corpus."
+        title="EARLIEST OBSERVED MATCH WITHIN SEARCHED CORPUS"
+        sub="Perceptual fingerprints compare visual structure against available reference copies. SROT explicitly isolates source platform observation, evidence collection, and SROT ingestion timestamps."
       />
 
       <Async state={o} rows={6}>
@@ -31,32 +31,64 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
             {!d.established ? (
               <div className="mb-4">
                 <EmptyState
-                  title="No matching copy found in the searched reference corpus."
-                  detail={d.empty_reason ?? "No qualifying near-duplicate was found in the searched reference corpus."}
+                  title="Origin cannot be established from the available reference corpus."
+                  detail={d.empty_reason ?? "No qualifying matching copy was observed within the searched reference corpus."}
                 />
               </div>
             ) : (
-              <div className="mb-4 grid gap-4 lg:grid-cols-[1.15fr_minmax(0,1fr)]">
-                <Panel title="Earliest known copy"
-                       hint="Oldest matching copy found in the searched reference corpus.">
+              <div className="mb-4 grid gap-4 lg:grid-cols-[1.25fr_minmax(0,1fr)]">
+                <Panel title="Earliest observed matching copy"
+                       hint="Earliest match observed within searched reference corpus. Does not imply universal discovery across the entire internet.">
                   <div className="flex flex-wrap items-baseline gap-3">
                     <span className="font-mono text-[19px] font-semibold text-accent">
                       {d.earliest?.label}
                     </span>
                     <Chip tone="accent">{d.earliest?.source_kind}</Chip>
+                    <Chip tone="muted" dot={false}>searched corpus item</Chip>
                   </div>
+
+                  {/* Forensic Timestamp Triad */}
+                  <div className="mt-4 rounded-lg border border-accent/25 bg-accent/[0.03] p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-accent mb-2.5">
+                      Provenance &amp; Custody Timestamps
+                    </div>
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 text-[11.5px]">
+                      <div className="rounded border border-line bg-surface/80 p-2">
+                        <span className="block text-[10px] font-semibold uppercase text-muted">A. Source Observation</span>
+                        <div className="font-mono font-medium text-ink mt-1">
+                          {d.earliest?.observed_at ? fmtDate(d.earliest.observed_at) : "Source publication time not established."}
+                        </div>
+                        <span className="text-[10px] text-muted/80 mt-0.5 block">{d.earliest?.source_kind || "Platform event"}</span>
+                      </div>
+                      <div className="rounded border border-line bg-surface/80 p-2">
+                        <span className="block text-[10px] font-semibold uppercase text-muted">B. Collection Event</span>
+                        <div className="font-mono font-medium text-ink mt-1">
+                          {d.earliest?.collected_at ? fmtDate(d.earliest.collected_at) : "Collection timestamp not recorded"}
+                        </div>
+                        <span className="text-[10px] text-muted/80 mt-0.5 block">Investigator acquisition</span>
+                      </div>
+                      <div className="rounded border border-line bg-surface/80 p-2">
+                        <span className="block text-[10px] font-semibold uppercase text-muted">C. SROT Ingestion Event</span>
+                        <div className="font-mono font-medium text-ink mt-1">
+                          {d.evidence_ingested_at ? fmtDate(d.evidence_ingested_at) : "Ingested at upload"}
+                        </div>
+                        <span className="text-[10px] text-muted/80 mt-0.5 block">Chain-of-custody ingest</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-3.5">
-                    <Field label="Observed in corpus">{fmtDate(d.earliest?.observed_at)}</Field>
-                    <Field label="Similarity">{fmtNum(d.earliest?.similarity)}%</Field>
+                    <Field label="Fingerprint similarity">{fmtNum(d.earliest?.similarity)}%</Field>
                     <Field label="Hamming distance">{d.earliest?.hamming} / 64 bits</Field>
-                    <Field label="Propagation span">
-                      {d.propagation_span_days != null ? `${d.propagation_span_days} days` : null}
+                    <Field label="Propagation span in corpus">
+                      {d.propagation_span_days != null ? `${d.propagation_span_days} days` : "Indeterminate"}
                     </Field>
+                    <Field label="Corpus scope">Searched {d.corpus_size} reference items</Field>
                     <div className="col-span-2">
-                      <Field label="Transformation recorded for this copy">{d.earliest?.transform}</Field>
+                      <Field label="Transformation recorded for this copy">{d.earliest?.transform || "None"}</Field>
                     </div>
                     <div className="col-span-2">
-                      <Field label="Match normalisation">{d.earliest?.normalisation}</Field>
+                      <Field label="Match normalisation">{d.earliest?.normalisation || "Standard"}</Field>
                     </div>
                   </div>
                   <div className="mt-4">
@@ -64,8 +96,8 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
                   </div>
                 </Panel>
 
-                <Panel title="Matching method"
-                       hint="The threshold was calibrated against representative populations, not chosen arbitrarily.">
+                <Panel title="Matching method &amp; calibration"
+                       hint="Threshold calibrated against representative media populations to minimise false attribution.">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">
                     <Field label="Method">{d.method}</Field>
                     <Field label="Threshold">{d.threshold}</Field>
@@ -73,7 +105,7 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
                     <Field label="Qualifying matches">{d.match_count}</Field>
                   </div>
                   <div className="mt-3.5">
-                    <div className="lbl mb-1.5">Threshold calibration</div>
+                    <div className="lbl mb-1.5">Threshold calibration parameters</div>
                     <pre className="overflow-auto rounded-lg border border-line bg-bg px-3 py-2.5 font-mono text-[10.5px] leading-relaxed text-ink2">
 {JSON.stringify(d.threshold_calibration, null, 2)}
                     </pre>
@@ -85,10 +117,10 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
             <Panel title="Reference corpus matches, ordered by first observation"
                    hint="Ordering shows propagation within the searched reference corpus. It does not imply universal discovery across the entire internet.">
               {d.matches.length === 0 ? (
-                <EmptyState title="No qualifying matches in the searched reference corpus."
-                            detail={d.empty_reason ?? undefined} />
+                <EmptyState title="Origin cannot be established from the available reference corpus."
+                            detail={d.empty_reason ?? "No qualifying match in the searched reference corpus."} />
               ) : (
-                <Table head={["Observed", "Reference corpus label", "Kind", "Similarity", "Hamming",
+                <Table head={["Source observation", "Reference corpus label", "Platform / Kind", "Similarity", "Hamming",
                               "Frames matched", "Transformation", "SHA-256"]}>
                   {d.matches.map((m) => (
                     <Row key={m.corpus_id} tone={m.is_earliest ? "bg-accent/[0.06]" : ""}>
@@ -97,7 +129,7 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
                           {m.is_earliest
                             ? <CheckCircle2 size={12} className="shrink-0 text-accent" />
                             : <Clock3 size={12} className="shrink-0 text-muted" />}
-                          {fmtDate(m.observed_at)}
+                          {m.observed_at ? fmtDate(m.observed_at) : "Publication time not established"}
                         </div>
                       </Cell>
                       <Cell mono className={m.is_earliest ? "text-accent" : ""}>{m.label}</Cell>
@@ -112,7 +144,7 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
                       </Cell>
                       <Cell mono>{m.hamming}/64</Cell>
                       <Cell mono>{m.matched_frames}/{m.total_frames}</Cell>
-                      <Cell className="max-w-[190px]">{m.transform}</Cell>
+                      <Cell className="max-w-[190px]">{m.transform || "—"}</Cell>
                       <Cell mono>{shortHash(m.sha256, 8)}</Cell>
                     </Row>
                   ))}

@@ -80,12 +80,13 @@ Configure these in the Render Dashboard under **Environment**:
 | Variable | Recommended Value | Purpose |
 | :--- | :--- | :--- |
 | `SROT_DATA` | `/var/data` | Points data storage to the persistent disk |
+| `ENVIRONMENT` | `production` | Enforces production mode (disables fallback passwords, strictly requires configured credentials) |
 | `CORS_ORIGINS` | `https://<your-frontend>.vercel.app,http://localhost:5177` | Restricts API access to your exact frontend origin |
 | `DEMO_OFFICER_BADGE` | `DEMO-OFFICER` | Badge ID for the evaluation account |
-| `DEMO_OFFICER_PASSWORD` | `<your-secure-evaluator-password>` | Police gate authentication password |
-| `DEMO_OFFICER_NAME` | `Insp. Vikramaditya (Cyber Ops)` | Profile name for report generation |
+| `DEMO_OFFICER_PASSWORD` | `<your-secure-evaluator-password>` | Police gate authentication password (must be provided via deployment secret) |
+| `DEMO_OFFICER_NAME` | `Demo Officer` | Profile name for report generation |
 | `DEMO_OFFICER_ROLE` | `Senior Forensic Investigator` | Role title displayed in certificates |
-| `DEMO_OFFICER_UNIT` | `Cyber Crime Investigation Unit` | Investigative unit name |
+| `DEMO_OFFICER_UNIT` | `Digital Forensics Unit` | Investigative unit name |
 | `HF_HUB_OFFLINE` | `1` | Enforces offline Hugging Face operation |
 | `TRANSFORMERS_OFFLINE`| `1` | Disables network calls in transformers |
 | `PYTHONUNBUFFERED` | `1` | Ensures real-time container log streaming |
@@ -164,3 +165,37 @@ Alternatively, create a one-off Render Job with command `python backend/seed.py`
   https://<render-service>.onrender.com/api/evidence/<ref>/media?token=<session_token>
   ```
 - **Session Revocation**: Clicking **Logout** immediately revokes the token on Render (`OfficerSession.is_revoked = True`), which immediately invalidates all subsequent REST API calls and media loads.
+
+---
+
+## 8. Backup & Disaster Recovery Recommendations
+
+All persistent application data resides in `/var/data`. To perform a routine offline snapshot:
+
+1. **Database Snapshot**: SQLite WAL mode allows online backups using SQLite's backup command:
+   ```bash
+   sqlite3 /var/data/srot.db ".backup '/var/data/srot_backup.db'"
+   ```
+2. **Evidence Archive**: To preserve original evidence and generated court packets:
+   ```bash
+   tar -czf /var/data/srot_evidence_backup.tar.gz -C /var/data evidence packets
+   ```
+3. **Render Disk Snapshots**: Render supports manual and automated disk snapshots. It is recommended to create a snapshot prior to major model or schema upgrades.
+
+---
+
+## 9. Known Limitations & Decision-Support Scope
+
+- **Decision-Support Indicator, Not Proof**: SROT is designed to produce verifiable technical indicators (PRNU sensor noise, DCT Benford distributions, C2PA manifest trust, perceptual hashing, Swin-ViT synthetic classification). Model scores represent computational confidence, not unassailable factual proof.
+- **Offline / Local Model Scope**: The local Swin-ViT model (`umm-maybe/AI-image-detector`) is trained specifically on image synthetic artifacts. It provides a visual signal and is not a universal audio or video deepfake detector.
+- **Empty Media Safeguard**: In scenarios where both the neural model and all physical signals are absent or unprocessable, SROT strictly safeguards judicial integrity by reporting `INSUFFICIENT_EVIDENCE` rather than fabricating or guessing an authenticity score.
+
+---
+
+## 10. Hardware & Operational Specifications
+
+- **Minimum Memory (RAM)**: 2 GB (required to comfortably load PyTorch, Swin-ViT weights, FFmpeg, and WeasyPrint PDF compilation in memory).
+- **Recommended Memory**: 4 GB (recommended when processing concurrent long video extractions and stress test laundering pipelines).
+- **CPU**: 2+ vCPU recommended for multi-threaded OpenCV / FFmpeg frame decoding and Tesseract OCR passes.
+- **Disk Space**: Minimum 2 GB persistent disk mount for SQLite database, evidence vault, and court packet generation.
+

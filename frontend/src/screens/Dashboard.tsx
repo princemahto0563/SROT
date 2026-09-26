@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, ShieldCheck, ShieldAlert, ScanSearch, Activity, FileText, Eye } from "lucide-react";
+import { ArrowRight, ShieldCheck, ShieldAlert, ScanSearch, Activity, FileText, Eye, GitCompare } from "lucide-react";
 import {
   Async, Chip, EmptyState, Field, Notice, PageHead, Panel, Stat, Table, Row, Cell,
 } from "../components/ui";
 import { useSession } from "../state/session";
-import { useApi, fmtBytes, fmtDate } from "../lib/api";
-import type { CampaignPayload, Lead } from "../lib/api";
+import { useApi, fmtBytes, fmtDate, fmtNum } from "../lib/api";
+import type { CampaignPayload, Lead, CaseComparisonPayload } from "../lib/api";
 
 const bandTone = (b?: string | null) =>
   b === "HIGH" ? "danger" : b === "MEDIUM" ? "amber" : b === "LOW" ? "accent" : "muted";
@@ -21,6 +21,7 @@ export default function Dashboard() {
   const { detail, detailLoading, detailError, caseRef, health, healthError, refresh, setEvidenceRef } = useSession();
   const leads = useApi<Lead[]>(caseRef ? `/cases/${caseRef}/leads` : null);
   const campaign = useApi<CampaignPayload>(caseRef ? `/cases/${caseRef}/campaign-matches` : null);
+  const comparison = useApi<CaseComparisonPayload>(caseRef ? `/cases/${caseRef}/comparison` : null);
 
   const evidence = detail?.evidence ?? [];
   const analysed = evidence.filter((e) => e.latest_run?.status === "completed");
@@ -63,6 +64,10 @@ export default function Dashboard() {
           <span>Case Triage &amp; Quick Access:</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link to="/compare" className="btn btn-primary text-xs py-1 px-2.5 flex items-center gap-1.5 shadow-sm">
+            <GitCompare size={13} />
+            <span>Forensic Comparison</span>
+          </Link>
           <Link to="/analysis" className="btn btn-ghost text-xs py-1 px-2.5 flex items-center gap-1.5">
             <ScanSearch size={13} className="text-accent" />
             <span>Forensic Assessment</span>
@@ -96,6 +101,85 @@ export default function Dashboard() {
           sub={chain ? `${chain.entries} hash-linked entries` : undefined}
         />
       </div>
+
+      {/* Forensic Comparison Section: Authentic Reference vs Case Derivatives */}
+      {comparison.data?.has_reference && comparison.data.reference && (
+        <div className="mb-5 rounded-xl border border-accent/25 bg-surface p-4 shadow-panel">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-lineSoft pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-accent">Forensic Comparison</span>
+                <Chip tone="ok" className="text-[10px]">Camera Reference Established</Chip>
+              </div>
+              <h3 className="text-[15px] font-bold text-ink mt-0.5">
+                Authentic Reference vs Case Derivatives ({comparison.data.comparisons.length} Evaluated)
+              </h3>
+            </div>
+            <Link to="/compare" className="btn btn-ghost text-xs py-1 px-2.5 flex items-center gap-1.5">
+              <span>Open Comparative Workstation</span>
+              <ArrowRight size={13} />
+            </Link>
+          </div>
+
+          <div className="mt-3.5 grid gap-4 lg:grid-cols-[1fr_2fr]">
+            {/* Left: Reference Card */}
+            <div className="rounded-lg border border-accent/20 bg-accent/[0.03] p-3.5 text-[11.5px] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-accent">Reference Baseline</span>
+                <span className="font-mono text-accent font-semibold">{comparison.data.reference.evidence_ref}</span>
+              </div>
+              <div className="font-semibold text-ink truncate max-w-[240px]">
+                {comparison.data.reference.filename}
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[10.5px] text-muted pt-1">
+                <div>Dimensions: <span className="font-bold text-ink">{comparison.data.reference.width}×{comparison.data.reference.height}</span></div>
+                <div>Size: <span className="font-bold text-ink">{fmtBytes(comparison.data.reference.size_bytes)}</span></div>
+                <div>EXIF: <span className="font-bold text-ok">{comparison.data.reference.exif_fields} fields</span></div>
+                <div>Role: <span className="font-bold text-accent">Physical Camera</span></div>
+              </div>
+              <div className="pt-2 border-t border-lineSoft text-[10px] font-mono text-muted truncate">
+                SHA: {comparison.data.reference.sha256}
+              </div>
+            </div>
+
+            {/* Right: Derivatives Comparison Table */}
+            <div className="overflow-x-auto">
+              <Table head={["Derivative Item", "Forensic Role", "Similarity", "SSIM", "Model Signal", "OCR Delta", "Action"]}>
+                {comparison.data.comparisons.slice(0, 4).map((c) => (
+                  <Row key={c.derivative_evidence_ref}>
+                    <Cell mono className="text-accent font-semibold whitespace-nowrap">
+                      {c.derivative_evidence_ref}
+                    </Cell>
+                    <Cell className="whitespace-nowrap">
+                      <Chip tone={c.identity.derivative.forensic_role?.includes("AI") ? "danger" : "amber"} className="text-[9.5px]">
+                        {c.identity.derivative.forensic_role?.replace("_", " ").toLowerCase() || "derivative"}
+                      </Chip>
+                    </Cell>
+                    <Cell mono className="whitespace-nowrap">
+                      <span className="font-bold">{fmtNum(c.visual.best_view_similarity)}%</span>
+                    </Cell>
+                    <Cell mono className="whitespace-nowrap">{c.visual.ssim}</Cell>
+                    <Cell mono className="whitespace-nowrap font-bold text-amber">
+                      {c.ai_signal.derivative_score ?? "—"}%
+                    </Cell>
+                    <Cell className="whitespace-nowrap text-[10.5px]">
+                      <span className="text-danger font-semibold">+{c.identifiers.added_count}</span> / <span className="text-muted">-{c.identifiers.removed_count}</span>
+                    </Cell>
+                    <Cell className="whitespace-nowrap">
+                      <Link
+                        to="/compare"
+                        className="text-xs font-semibold text-accent hover:underline flex items-center gap-1"
+                      >
+                        Compare →
+                      </Link>
+                    </Cell>
+                  </Row>
+                ))}
+              </Table>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[1.55fr_1fr]">
         <Panel title="Evidence in this case"

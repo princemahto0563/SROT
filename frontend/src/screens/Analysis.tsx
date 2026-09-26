@@ -7,8 +7,9 @@ import {
   Async, Button, Chip, EmptyState, Field, Meter, Notice, PageHead, Panel, Table, Row, Cell,
 } from "../components/ui";
 import { RequireEvidence } from "../components/guards";
+import { useSession } from "../state/session";
 import { useApi, api, fmtNum, authenticatedUrl } from "../lib/api";
-import type { Signal, CrossSignalAssessment, QualityGate, ReplayResult, Evidence } from "../lib/api";
+import type { Signal, CrossSignalAssessment, QualityGate, ReplayResult, Evidence, CaseComparisonPayload } from "../lib/api";
 
 type AnalysisPayload = {
   evidence_ref: string; assessment: string; confidence_band: string;
@@ -72,7 +73,7 @@ const statusTone = (status: string) => {
   }
 };
 
-export const formatConsistency = (s?: string | null): string => {
+const formatConsistency = (s?: string | null): string => {
   if (!s) return "Not enough evidence for a reliable conclusion";
   switch (s.toUpperCase()) {
     case "STRONG_CONSISTENCY":
@@ -108,7 +109,7 @@ const METRIC_LABELS: Record<string, string> = {
 export default function AnalysisScreen() {
   return (
     <RequireEvidence>
-      {(ev) => <AnalysisBody evidenceRef={ev.evidence_ref} evidence={ev} />}
+      {(ev) => <AnalysisBody key={ev.evidence_ref} evidenceRef={ev.evidence_ref} evidence={ev} />}
     </RequireEvidence>
   );
 }
@@ -118,6 +119,9 @@ function AnalysisBody({ evidenceRef, evidence }: { evidenceRef: string; evidence
   const frames = useApi<FramesPayload>(`/evidence/${evidenceRef}/frames`);
   const cross = useApi<CrossSignalAssessment>(`/evidence/${evidenceRef}/cross-signal-assessment`);
   const prov = useApi<ProvenanceTrace>(`/evidence/${evidenceRef}/provenance-trace`);
+  const { caseRef } = useSession();
+  const comparison = useApi<CaseComparisonPayload>(caseRef ? `/cases/${caseRef}/comparison` : null);
+  const [deltaView, setDeltaView] = useState<"reference" | "derivative" | "difference">("derivative");
   const [activeTrace, setActiveTrace] = useState<string>("noise_residual");
   const [viewMode, setViewMode] = useState<"side_by_side" | "trace_only" | "original_only">("side_by_side");
   const [replayLoading, setReplayLoading] = useState(false);
@@ -515,11 +519,46 @@ function AnalysisBody({ evidenceRef, evidence }: { evidenceRef: string; evidence
                 title="Spatial Forensic Trace & Side-by-Side Localization Inspector"
                 hint="Compare reference frames against false-color high-pass noise residuals, ELA compression deltas, and edge gradients."
               >
+                {/* Comparative Reference Perspective Bar */}
+                {comparison.data?.has_reference && comparison.data.reference && (
+                  <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-accent/25 bg-accent/[0.04] p-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-accent">Forensic Comparison Perspective:</span>
+                      <span className="text-[11.5px] text-ink">
+                        Ref: <span className="font-mono font-semibold">{comparison.data.reference.evidence_ref}</span> ⟷ Current: <span className="font-mono font-semibold">{evidenceRef}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        tone={deltaView === "reference" ? "primary" : "ghost"}
+                        className="text-xs py-0.5 px-2.5"
+                        onClick={() => { setDeltaView("reference"); }}
+                      >
+                        Authentic Reference
+                      </Button>
+                      <Button
+                        tone={deltaView === "derivative" ? "primary" : "ghost"}
+                        className="text-xs py-0.5 px-2.5"
+                        onClick={() => { setDeltaView("derivative"); }}
+                      >
+                        Current Derivative
+                      </Button>
+                      <Button
+                        tone={deltaView === "difference" ? "primary" : "ghost"}
+                        className="text-xs py-0.5 px-2.5"
+                        onClick={() => { setDeltaView("difference"); setActiveTrace("difference_heatmap"); }}
+                      >
+                        Difference / Delta View
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Controls */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[11.5px] font-semibold text-ink">Trace Mode:</span>
-                    <div className="flex gap-1.5">
+                    <div className="flex flex-wrap gap-1.5">
                       <Button
                         tone={activeTrace === "noise_residual" ? "primary" : "ghost"}
                         className="text-xs py-1 px-2.5"
@@ -541,6 +580,15 @@ function AnalysisBody({ evidenceRef, evidence }: { evidenceRef: string; evidence
                       >
                         High-Frequency Gradient
                       </Button>
+                      {comparison.data?.has_reference && (
+                        <Button
+                          tone={activeTrace === "difference_heatmap" ? "primary" : "ghost"}
+                          className="text-xs py-1 px-2.5"
+                          onClick={() => { setActiveTrace("difference_heatmap"); setDeltaView("difference"); }}
+                        >
+                          Reference Delta Heatmap
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -574,11 +622,20 @@ function AnalysisBody({ evidenceRef, evidence }: { evidenceRef: string; evidence
                 <div className={`mt-4 grid gap-4 ${viewMode === "side_by_side" ? "md:grid-cols-2" : "grid-cols-1 max-w-[560px] mx-auto"}`}>
                   {(viewMode === "side_by_side" || viewMode === "original_only") && (
                     <div className="flex flex-col items-center">
-                      <div className="mb-2 text-[11.5px] font-semibold text-ink">Original Reference Frame</div>
+                      <div className="mb-2 text-[11.5px] font-semibold text-ink">
+                        {deltaView === "reference" && comparison.data?.reference
+                          ? `Authentic Reference (${comparison.data.reference.evidence_ref})`
+                          : `Current Derivative Frame (${evidenceRef})`}
+                      </div>
                       <div className="overflow-hidden rounded-lg border border-line bg-black w-full flex justify-center">
                         <img
-                          src={authenticatedUrl(`/api/evidence/${evidenceRef}/frames/0/image`)}
-                          alt="Original evidence frame"
+                          key={deltaView === "reference" && comparison.data?.reference
+                            ? `${comparison.data.reference.evidence_ref}-frame-0`
+                            : `${evidenceRef}-frame-0`}
+                          src={deltaView === "reference" && comparison.data?.reference
+                            ? authenticatedUrl(`/api/evidence/${comparison.data.reference.evidence_ref}/frames/0/image`)
+                            : authenticatedUrl(`/api/evidence/${evidenceRef}/frames/0/image`)}
+                          alt="Evidence frame"
                           className="block max-h-[340px] w-auto object-contain"
                           loading="lazy"
                         />
@@ -592,15 +649,24 @@ function AnalysisBody({ evidenceRef, evidence }: { evidenceRef: string; evidence
                         {activeTrace === "noise_residual" && "Sensor Noise Residual (Viridis Heatmap)"}
                         {activeTrace === "ela_residual" && "Error Level Analysis (Inferno Heatmap)"}
                         {activeTrace === "gradient_inconsistency" && "Sobel Gradient Magnitude (Turbo Heatmap)"}
+                        {activeTrace === "difference_heatmap" && "Reference Difference Heatmap (35% Derivative + 65% Magma colormap)"}
                       </div>
                       <div className="overflow-hidden rounded-lg border border-line bg-black w-full flex justify-center">
                         <img
-                          src={authenticatedUrl(`/api/evidence/${evidenceRef}/traces/${activeTrace}`)}
+                          key={`${evidenceRef}-${activeTrace}`}
+                          src={activeTrace === "difference_heatmap"
+                            ? authenticatedUrl(`/api/evidence/${evidenceRef}/traces/difference?ref_ref=${comparison.data?.reference?.evidence_ref || ""}`)
+                            : authenticatedUrl(`/api/evidence/${evidenceRef}/traces/${activeTrace}`)}
                           alt={`Forensic trace ${activeTrace}`}
                           className="block max-h-[340px] w-auto object-contain"
                           loading="lazy"
                         />
                       </div>
+                      {activeTrace === "difference_heatmap" && (
+                        <div className="mt-1 text-[10px] text-muted italic">
+                          Examiner decision-support trace, not automated proof of manipulation.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -618,6 +684,8 @@ function AnalysisBody({ evidenceRef, evidence }: { evidenceRef: string; evidence
                         "Displays quantization error differentials against a Q=90 baseline. Regions saved under differing compression algorithms or spliced from another source appear noticeably brighter."}
                       {activeTrace === "gradient_inconsistency" &&
                         "Highlights spatial gradient spikes. Digital text, mobile UI overlays, and vector graphics generate razor-sharp edges compared to optical camera lens roll-off."}
+                      {activeTrace === "difference_heatmap" &&
+                        "Renders blended pixel and gradient deltas between authentic camera reference and current derivative. Directly isolates added donation banners, pasted QR codes, or altered portrait regions."}
                     </p>
                   </div>
 
@@ -846,7 +914,7 @@ function FrameStrip({ frames, peak }: {
 
       <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,240px)_1fr]">
         <div className="mx-auto w-fit overflow-hidden rounded-lg border border-line bg-black">
-          <img src={authenticatedUrl(chosen.image_url)} alt={`Sampled frame ${chosen.frame_index}`}
+          <img key={chosen.image_url} src={authenticatedUrl(chosen.image_url)} alt={`Sampled frame ${chosen.frame_index}`}
                className="block max-h-[360px] w-auto" loading="lazy" />
         </div>
         <div>

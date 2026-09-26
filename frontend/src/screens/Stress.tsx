@@ -11,7 +11,7 @@ import { api, usePolling, fmtBytes, fmtNum, shortHash } from "../lib/api";
 import type { Stress as StressPayload } from "../lib/api";
 
 export default function Stress() {
-  return <RequireEvidence>{(ev) => <Body evidenceRef={ev.evidence_ref} />}</RequireEvidence>;
+  return <RequireEvidence>{(ev) => <Body key={ev.evidence_ref} evidenceRef={ev.evidence_ref} />}</RequireEvidence>;
 }
 
 function Body({ evidenceRef }: { evidenceRef: string }) {
@@ -84,7 +84,14 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
           return (
             <>
               <div className="mb-4 grid gap-4 lg:grid-cols-[1fr_1.4fr]">
-                <Panel title="Result">
+                <Panel
+                  title="Result"
+                  right={d.robustness_label ? (
+                    <Chip tone={d.forensic_role === "authentic_reference" ? "ok" : "amber"}>
+                      {d.robustness_label}
+                    </Chip>
+                  ) : undefined}
+                >
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">
                     <Field label="Status">
                       <Chip tone={d.status === "completed" ? "ok" : d.status === "failed" ? "danger" : "amber"}>
@@ -110,6 +117,12 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
                       <Field label="Observed reliability boundary">{d.reliability_boundary}</Field>
                     </div>
                   </div>
+                  {d.disclaimer && (
+                    <div className="mt-3 text-[10.5px] text-muted leading-relaxed border-t border-lineSoft pt-2.5">
+                      <span className="font-semibold text-ink2">Scientific Boundary: </span>
+                      {d.disclaimer}
+                    </div>
+                  )}
                   {d.directional_stability?.summary && (
                     <div className="mt-3 rounded-lg border border-line bg-s2/40 px-3.5 py-2.5 text-[11px] text-ink2">
                       <span className="font-semibold text-ink">Robustness assessment: </span>

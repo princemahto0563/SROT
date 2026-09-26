@@ -29,35 +29,70 @@ type Ctx = {
 const SessionCtx = createContext<Ctx | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [caseRef, setCaseRef] = useState<string | null>(null);
+  const [caseRef, setCaseRefState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("srot_case_ref") || null;
+    } catch {
+      return null;
+    }
+  });
   const [evidenceRef, setEvidenceRef] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+
+  const setCaseRef = useCallback((r: string | null) => {
+    setCaseRefState(r);
+    try {
+      if (r) localStorage.setItem("srot_case_ref", r);
+      else localStorage.removeItem("srot_case_ref");
+    } catch {}
+  }, []);
 
   const health = useApi<Health>("/health", [tick]);
   const cases = useApi<CaseSummary[]>("/cases", [tick]);
   const detail = useApi<CaseDetail>(caseRef ? `/cases/${caseRef}` : null, [tick]);
 
-  // pick the first case as soon as one exists
+  // pick the saved or first case as soon as one exists
   useEffect(() => {
-    if (!caseRef && cases.data?.length) setCaseRef(cases.data[0].case_ref);
-  }, [cases.data, caseRef]);
+    if (!cases.data?.length) return;
+    if (!caseRef) {
+      try {
+        const saved = localStorage.getItem("srot_case_ref");
+        if (saved && cases.data.some((c) => c.case_ref === saved)) {
+          setCaseRef(saved);
+          return;
+        }
+      } catch {}
+      setCaseRef(cases.data[0].case_ref);
+    } else if (!cases.data.some((c) => c.case_ref === caseRef)) {
+      setCaseRef(cases.data[0].case_ref);
+    }
+  }, [cases.data, caseRef, setCaseRef]);
 
   // keep the evidence selection valid for the loaded case
   useEffect(() => {
     const list = detail.data?.evidence ?? [];
-    if (!list.length) { setEvidenceRef(null); return; }
-    if (!evidenceRef || !list.some((e) => e.evidence_ref === evidenceRef)) {
+    if (!list.length) {
+      if (!detail.loading) setEvidenceRef(null);
+      return;
+    }
+    if (!evidenceRef) {
+      const done = list.find((e) => e.latest_run?.status === "completed");
+      setEvidenceRef((done ?? list[list.length - 1]).evidence_ref);
+    } else if (!detail.loading && !list.some((e) => e.evidence_ref === evidenceRef)) {
+      // Only switch evidence fallback after detail loading has finished and the ref definitely isn't in this case
       const done = list.find((e) => e.latest_run?.status === "completed");
       setEvidenceRef((done ?? list[list.length - 1]).evidence_ref);
     }
-  }, [detail.data, evidenceRef]);
+  }, [detail.data, detail.loading, evidenceRef]);
+
+  const hasPending = Boolean(
+    detail.data?.evidence?.some(
+      (e) => e.latest_run?.status === "queued" || e.latest_run?.status === "running"
+    )
+  );
 
   // Auto-poll while any evidence item in the case is queued or running
   useEffect(() => {
-    const list = detail.data?.evidence ?? [];
-    const hasPending = list.some(
-      (e) => e.latest_run?.status === "queued" || e.latest_run?.status === "running"
-    );
     if (!hasPending) return;
 
     const timer = window.setInterval(() => {
@@ -65,20 +100,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       cases.reload();
     }, 1200);
     return () => window.clearInterval(timer);
-  }, [detail.data?.evidence, detail.reload, cases.reload]);
+  }, [hasPending, detail.reload, cases.reload]);
 
   const refresh = useCallback(() => {
     setTick((t) => t + 1);
-    detail.reload();
-    cases.reload();
-  }, [detail.reload, cases.reload]);
+  }, []);
 
   const createNewCase = useCallback(async (payload: { title: string; category?: string; officer?: string; summary?: string }) => {
     const res = await api.post<CaseSummary>("/cases", payload);
     refresh();
     setCaseRef(res.case_ref);
     return res;
-  }, [refresh]);
+  }, [refresh, setCaseRef]);
+
+  const current = useMemo(() => {
+    return detail.data?.evidence.find((e) => e.evidence_ref === evidenceRef) ?? null;
+  }, [detail.data?.evidence, evidenceRef]);
 
   const value = useMemo<Ctx>(() => ({
     health: health.data,
@@ -93,10 +130,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     evidence: detail.data?.evidence ?? [],
     evidenceRef,
     setEvidenceRef,
-    current: detail.data?.evidence.find((e) => e.evidence_ref === evidenceRef) ?? null,
+    current,
     refresh,
   }), [health.data, health.error, cases.data, caseRef, detail.data, detail.loading,
-       detail.error, evidenceRef, refresh, createNewCase]);
+       detail.error, evidenceRef, current, refresh, createNewCase, setCaseRef]);
 
   return <SessionCtx.Provider value={value}>{children}</SessionCtx.Provider>;
 }
@@ -105,15 +142,4 @@ export function useSession(): Ctx {
   const c = useContext(SessionCtx);
   if (!c) throw new Error("useSession must be used inside SessionProvider");
   return c;
-}
-
-/** Create the demonstration case if the database is empty. */
-export async function createDemoCase(): Promise<CaseSummary> {
-  return api.post<CaseSummary>("/cases", {
-    case_ref: `CASE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`,
-    title: "New case",
-    category: "Synthetic media",
-    officer: "Investigating Officer",
-    summary: "Created from the SROT console.",
-  });
 }

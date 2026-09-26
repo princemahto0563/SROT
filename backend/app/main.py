@@ -9,18 +9,19 @@ from typing import Any
 from fastapi import (FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks,
                      Depends, Request)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from sqlalchemy.orm import Session
 
-from .db import init_db, get_db, EVIDENCE_DIR, WORK_DIR, PACKET_DIR
+from .db import init_db, get_db, EVIDENCE_DIR, WORK_DIR, PACKET_DIR, get_evidence_path
 from .models import (
     Case, Evidence, AnalysisRun, Signal, FrameAnalysis, OriginMatch, CorpusItem,
     ExtractedEntity, RecaptureResult, StressTestRun, StressVariant, CampaignMatch,
     AuditLog, TimelineEvent, Lead, CourtPacket, FingerprintLedger, NeuralFrameResult,
-    OfficerUser, OfficerSession, utcnow,
+    OfficerUser, OfficerSession, ForensicComparison, utcnow,
 )
 from .services import integrity, audit as audit_svc, casebuild, ocr as ocr_svc
 from .services import report as report_svc
+from .services import comparison as comp_svc
 from .services import signals as sig_svc
 from .services import fingerprint as fp_svc
 from .services import neural as neural_svc
@@ -67,32 +68,38 @@ app = FastAPI(
     version="2.0.0",
     dependencies=[Depends(verify_officer_access)],
 )
-cors_raw = os.environ.get(
-    "CORS_ORIGINS",
-    "http://localhost:5177,http://127.0.0.1:5177,https://srot-umt3.vercel.app,https://srot-henna.vercel.app",
-)
-allowed_origins_set = {
-    "http://localhost:5177",
-    "http://127.0.0.1:5177",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://srot-umt3.vercel.app",
-    "https://srot-henna.vercel.app",
-}
-for orig in cors_raw.split(","):
-    orig_clean = orig.strip()
-    if orig_clean:
-        allowed_origins_set.add(orig_clean)
+is_prod = os.environ.get("ENVIRONMENT", "").strip().lower() == "production"
+cors_raw = os.environ.get("CORS_ORIGINS", "").strip()
 
-allowed_origins = list(allowed_origins_set)
+if is_prod:
+    # In production, ONLY explicit origins from CORS_ORIGINS are accepted; no wildcard or fallback regex
+    allowed_origins = [orig.strip() for orig in cors_raw.split(",") if orig.strip()]
+    allow_origin_regex = None
+else:
+    # Development mode supports localhost and any optional CORS_ORIGINS
+    dev_origins = {
+        "http://localhost:5177",
+        "http://127.0.0.1:5177",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    }
+    if cors_raw:
+        for orig in cors_raw.split(","):
+            if orig.strip():
+                dev_origins.add(orig.strip())
+    allowed_origins = list(dev_origins)
+    allow_origin_regex = r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition", "Content-Length", "Content-Type"],
 )
 
 
@@ -235,10 +242,13 @@ def _case_json(db: Session, c: Case) -> dict[str, Any]:
     leads = db.query(Lead).filter(Lead.case_id == c.id).count()
     matches = (db.query(OriginMatch)
                .filter(OriginMatch.evidence_id.in_([e.id for e in evs] or [0])).count())
+    ref = comp_svc.get_authentic_reference(db, c.id)
     return {
         "id": c.id, "case_ref": c.case_ref, "title": c.title, "category": c.category,
         "officer": c.officer, "unit": c.unit, "summary": c.summary, "status": c.status,
         "created_at": _iso(c.created_at),
+        "authentic_reference_ref": ref.evidence_ref if ref else None,
+        "has_authentic_reference": bool(ref),
         "counts": {"evidence": len(evs),
                    "media": sum(1 for e in evs if e.media_kind in ("image", "video")),
                    "entities": ent_count, "leads": leads, "corpus_matches": matches,
@@ -286,6 +296,139 @@ def get_case(case_ref: str, db: Session = Depends(get_db)):
     return out
 
 
+# ── forensic comparison ───────────────────────────────────────────────────────
+@app.get("/api/cases/{case_ref}/comparison")
+def get_case_comparison(case_ref: str, db: Session = Depends(get_db)):
+    case = db.query(Case).filter(Case.case_ref == case_ref).first()
+    if not case:
+        raise HTTPException(404, "case not found")
+
+    comp_svc.classify_demo_case_evidence(db, case.id)
+    ref = comp_svc.get_authentic_reference(db, case.id)
+    if not ref:
+        return {
+            "has_reference": False,
+            "case_ref": case.case_ref,
+            "reference": None,
+            "comparisons": [],
+            "count": 0,
+            "scientific_boundaries": (
+                "SCIENTIFIC COMPARISON BOUNDARIES: No authentic camera reference baseline designated for this case. "
+                "SROT compares derivatives strictly within the available case corpus without claiming universal origin."
+            ),
+        }
+
+    media_evs = db.query(Evidence).filter(
+        Evidence.case_id == case.id,
+        Evidence.id != ref.id,
+        Evidence.media_kind.in_(("image", "video")),
+    ).order_by(Evidence.id).all()
+
+    comparisons = []
+    for dev in media_evs:
+        comp = comp_svc.compare_evidence(db, case.id, ref.id, dev.id)
+        comparisons.append({
+            **comp,
+            "derivative": _evidence_json(db, dev),
+        })
+
+    return {
+        "has_reference": True,
+        "case_ref": case.case_ref,
+        "reference": _evidence_json(db, ref),
+        "comparisons": comparisons,
+        "count": len(comparisons),
+        "scientific_boundaries": (
+            "SCIENTIFIC COMPARISON BOUNDARIES: SROT compares submitted items strictly within the available "
+            "case corpus. No claim of universal internet-wide origin discovery is made. Visual delta indices "
+            "and model signals represent technical decision-support metrics, not definitive human attribution."
+        ),
+    }
+
+
+@app.get("/api/evidence/{evidence_ref}/compare/{other_evidence_ref}")
+def get_pairwise_comparison(evidence_ref: str, other_evidence_ref: str, db: Session = Depends(get_db)):
+    ev1 = db.query(Evidence).filter(Evidence.evidence_ref == evidence_ref).first()
+    ev2 = db.query(Evidence).filter(Evidence.evidence_ref == other_evidence_ref).first()
+    if not ev1 or not ev2:
+        raise HTTPException(404, "evidence item not found")
+
+    comp = comp_svc.compare_evidence(db, ev1.case_id, ev1.id, ev2.id)
+    return {
+        "comparison": comp,
+        "evidence_a": _evidence_json(db, ev1),
+        "evidence_b": _evidence_json(db, ev2),
+        "scientific_boundaries": (
+            "Pairwise comparison is evaluated directly between stored files. Scores represent computational deltas "
+            "and do not constitute sole proof of malicious tampering."
+        ),
+    }
+
+
+@app.post("/api/cases/{case_ref}/set-reference")
+def set_case_reference(case_ref: str, payload: dict, db: Session = Depends(get_db)):
+    case = db.query(Case).filter(Case.case_ref == case_ref).first()
+    if not case:
+        raise HTTPException(404, "case not found")
+    ev_ref = payload.get("evidence_ref")
+    if not ev_ref:
+        raise HTTPException(400, "evidence_ref required in payload")
+    target = db.query(Evidence).filter(Evidence.case_id == case.id, Evidence.evidence_ref == ev_ref).first()
+    if not target:
+        raise HTTPException(404, "evidence not found in case")
+
+    all_evs = db.query(Evidence).filter(Evidence.case_id == case.id).all()
+    for e in all_evs:
+        if e.id == target.id:
+            e.forensic_role = "AUTHENTIC_REFERENCE"
+            e.classification_basis = "Designated by investigating officer"
+            e.reference_evidence_id = None
+        else:
+            e.forensic_role = "AI_OR_MODIFIED_DERIVATIVE"
+            e.reference_evidence_id = target.id
+            if not e.classification_basis:
+                e.classification_basis = "Designated derivative relative to reference baseline"
+
+    db.commit()
+
+    target_run = (
+        db.query(AnalysisRun)
+        .filter(AnalysisRun.evidence_id == target.id)
+        .order_by(AnalysisRun.id.desc())
+        .first()
+    )
+    if not target_run:
+        target_run = AnalysisRun(
+            evidence_id=target.id,
+            status="completed",
+            assessment="Authentic Reference Baseline",
+            detector_backend="reference-baseline",
+        )
+        db.add(target_run)
+        db.commit()
+        db.refresh(target_run)
+
+    for ev in all_evs:
+        ev_run = (
+            db.query(AnalysisRun)
+            .filter(AnalysisRun.evidence_id == ev.id)
+            .order_by(AnalysisRun.id.desc())
+            .first()
+            or target_run
+        )
+        casebuild.rebuild_graph(db, case, ev, ev_run)
+
+    casebuild.rebuild_timeline(db, case, target, target_run)
+    casebuild.rebuild_leads(db, case, target, target_run)
+
+    audit_svc.record(db, case_id=case.id, action="Authentic reference designated",
+                     component="comparison engine", evidence_ref=target.evidence_ref,
+                     evidence_hash=target.sha256,
+                     payload={"designated_reference": target.evidence_ref, "filename": target.filename})
+    return {"status": "ok", "reference_ref": target.evidence_ref}
+
+
+
 # ── evidence ─────────────────────────────────────────────────────────────────
 def _evidence_json(db: Session, e: Evidence) -> dict[str, Any]:
     run = (db.query(AnalysisRun).filter(AnalysisRun.evidence_id == e.id)
@@ -295,6 +438,15 @@ def _evidence_json(db: Session, e: Evidence) -> dict[str, Any]:
         "media_kind": e.media_kind, "mime_type": e.mime_type, "size_bytes": e.size_bytes,
         "sha256": e.sha256, "hash_algorithm": e.hash_algorithm,
         "ingested_at": _iso(e.ingested_at),
+        "forensic_role": e.forensic_role or "derivative",
+        "reference_evidence_id": e.reference_evidence_id,
+        "classification_basis": e.classification_basis,
+        "source_platform": e.source_platform,
+        "source_account": e.source_account,
+        "source_post_id": e.source_post_id,
+        "source_url": e.source_url,
+        "source_observed_at": _iso(e.source_observed_at) if e.source_observed_at else None,
+        "collection_at": _iso(e.collection_at) if e.collection_at else None,
         "width": e.width, "height": e.height, "duration_s": e.duration_s, "fps": e.fps,
         "video_codec": e.video_codec, "audio_codec": e.audio_codec,
         "container_format": e.container_format, "encoder_tag": e.encoder_tag,
@@ -350,7 +502,8 @@ async def upload_evidence(case_ref: str, background: BackgroundTasks,
         raise HTTPException(400, "uploaded file is empty")
 
     digest = integrity.sha256_file(dest)          # computed BEFORE any analysis
-    ev = Evidence(evidence_ref=ev_ref, case_id=case.id, filename=safe, stored_path=str(dest),
+    rel_path = f"evidence/{case.case_ref}/{dest.name}"
+    ev = Evidence(evidence_ref=ev_ref, case_id=case.id, filename=safe, stored_path=rel_path,
                   mime_type=integrity.guess_mime(safe), media_kind=integrity.media_kind_for(safe),
                   size_bytes=size, sha256=digest)
     db.add(ev); db.commit(); db.refresh(ev)
@@ -490,13 +643,17 @@ def frame_image(evidence_ref: str, idx: int, db: Session = Depends(get_db)):
 
 
 @app.get("/api/evidence/{evidence_ref}/media")
+@app.get("/api/evidence/{evidence_ref}/file")
 def evidence_media(evidence_ref: str, db: Session = Depends(get_db)):
     import mimetypes
     ev = db.query(Evidence).filter(Evidence.evidence_ref == evidence_ref).first()
-    if not ev or not Path(ev.stored_path).exists():
+    if not ev:
+        raise HTTPException(404, "evidence not found")
+    p = get_evidence_path(ev)
+    if not p.exists():
         raise HTTPException(404, "evidence file not available")
-    media_type = ev.mime_type or mimetypes.guess_type(ev.stored_path)[0] or "application/octet-stream"
-    return FileResponse(ev.stored_path, media_type=media_type)
+    media_type = ev.mime_type or mimetypes.guess_type(str(p))[0] or "application/octet-stream"
+    return FileResponse(p, media_type=media_type)
 
 
 @app.get("/api/evidence/{evidence_ref}/neural-analysis")
@@ -643,11 +800,47 @@ def get_available_traces():
     return {"traces": trace_svc.get_available_traces()}
 
 
+@app.get("/api/evidence/{evidence_ref}/traces/difference")
+def get_difference_trace(evidence_ref: str, ref_ref: str | None = None, db: Session = Depends(get_db)):
+    """Generate and stream a blended difference heatmap between authentic reference and derivative."""
+    ev = db.query(Evidence).filter(Evidence.evidence_ref == evidence_ref).first()
+    if not ev:
+        raise HTTPException(404, "evidence item not found")
+
+    if ref_ref:
+        ref_ev = db.query(Evidence).filter(Evidence.evidence_ref == ref_ref).first()
+    else:
+        ref_ev = comp_svc.get_authentic_reference(db, ev.case_id)
+
+    if not ref_ev:
+        raise HTTPException(404, "No authentic reference available to compute difference")
+
+    p_ev = get_evidence_path(ev)
+    p_ref = get_evidence_path(ref_ev)
+    if not p_ev.exists() or not p_ref.exists():
+        raise HTTPException(404, "Underlying evidence files not present on disk")
+
+    png_bytes, meta = comp_svc.generate_difference_heatmap(p_ref, p_ev)
+    if not png_bytes:
+        raise HTTPException(500, meta.get("error", "Failed to compute difference heatmap"))
+    return Response(content=png_bytes, media_type="image/png")
+
+
 @app.get("/api/evidence/{evidence_ref}/traces/{trace_type}")
 def get_trace_image(evidence_ref: str, trace_type: str, frame_idx: int = 0, db: Session = Depends(get_db)):
-    """Generate and stream a spatial forensic trace map (noise residual, ELA, gradient)."""
-    from fastapi.responses import Response
+    """Generate and stream a spatial forensic trace map (noise residual, ELA, gradient, difference heatmap)."""
     ev, run = _require_run(db, evidence_ref)
+    
+    if trace_type == "difference_heatmap":
+        ref_ev = comp_svc.get_authentic_reference(db, ev.case_id)
+        if ref_ev:
+            p_ref = get_evidence_path(ref_ev)
+            p_ev = get_evidence_path(ev)
+            if p_ref.exists() and p_ev.exists():
+                png_bytes, meta = comp_svc.generate_difference_heatmap(p_ref, p_ev)
+                if png_bytes:
+                    return Response(content=png_bytes, media_type="image/png")
+
     row = (db.query(FrameAnalysis)
            .filter(FrameAnalysis.run_id == run.id, FrameAnalysis.frame_index == frame_idx).first())
     if not row or not row.path or not Path(row.path).exists():
@@ -671,7 +864,11 @@ def get_origin(evidence_ref: str, db: Session = Depends(get_db)):
             .order_by(CorpusItem.observed_at.asc()).all())
     matches = [{
         "corpus_id": c.id, "label": c.label, "source_kind": c.source_kind,
-        "observed_at": _iso(c.observed_at), "similarity": m.similarity, "hamming": m.hamming,
+        "observed_at": _iso(c.observed_at),
+        "source_observation_at": _iso(c.observed_at),
+        "collected_at": None,
+        "evidence_ingested_at": _iso(ev.ingested_at),
+        "similarity": m.similarity, "hamming": m.hamming,
         "hash_type": m.hash_type, "normalisation": m.normalisation,
         "matched_frames": m.matched_frames,
         "total_frames": m.total_frames, "is_earliest": m.is_earliest,
@@ -683,9 +880,34 @@ def get_origin(evidence_ref: str, db: Session = Depends(get_db)):
     if earliest and earliest["observed_at"]:
         d = ev.ingested_at - dt.datetime.fromisoformat(earliest["observed_at"])
         span = round(d.total_seconds() / 86400, 2)
+
+    corpus_count = db.query(CorpusItem).count()
+    ref_ev = comp_svc.get_authentic_reference(db, ev.case_id)
+    is_ref = (ev.forensic_role == "authentic_reference") or (ref_ev and ref_ev.id == ev.id)
+
+    if is_ref:
+        origin_status = "ORIGIN: AUTHENTIC REFERENCE BASELINE"
+        empty_reason = "This evidence serves as the designated Authentic Camera Reference baseline for this case."
+        disclaimer = (
+            f"AUTHENTIC CAMERA REFERENCE BASELINE. Ground-truth physical camera reference established in case custody. "
+            f"Public origin discovery across the internet is unavailable in current deployment. "
+            f"Searchable SROT reference corpus: {corpus_count} items."
+        )
+    else:
+        origin_status = "EARLIEST MATCH IN SROT EVIDENCE CORPUS" if earliest else "ORIGIN: NOT ESTABLISHED"
+        empty_reason = None if earliest else "Origin cannot be established from the available reference corpus. No matching reference found in the searched reference corpus."
+        disclaimer = (
+            f"EARLIEST OBSERVED MATCH WITHIN SEARCHED CORPUS. Ordering reflects first observation within searched reference "
+            f"corpus, not universal discovery across the entire internet. Public origin discovery is unavailable in current deployment. "
+            f"Searchable SROT corpus: {corpus_count} evidence items. SROT never describes a match as 'original source'."
+        )
+
     return {
         "evidence_ref": ev.evidence_ref,
-        "corpus_size": db.query(CorpusItem).count(),
+        "evidence_ingested_at": _iso(ev.ingested_at),
+        "forensic_role": "authentic_reference" if is_ref else "derivative",
+        "origin_status": origin_status,
+        "corpus_size": corpus_count,
         "matches": matches, "match_count": len(matches), "earliest": earliest,
         "propagation_span_days": span,
         "max_similarity": max((m["similarity"] for m in matches), default=None),
@@ -694,11 +916,14 @@ def get_origin(evidence_ref: str, db: Session = Depends(get_db)):
                       f"corroborated by ≥ {fp_svc.MIN_CORROBORATING_FRAMES} independently "
                       f"matching frames"),
         "threshold_calibration": fp_svc.CALIBRATION,
-        "established": bool(earliest),
-        "empty_reason": None if earliest else
-            "No matching reference found in the available corpus.",
-        "disclaimer": "Earliest known/reference match within the available corpus. This is not a claim of first "
-                      "publication anywhere, and SROT never describes a match as 'original source'.",
+        "established": bool(earliest) or is_ref,
+        "empty_reason": empty_reason,
+        "disclaimer": disclaimer,
+        "case_reference": None if (is_ref or not ref_ev) else {
+            "evidence_ref": ref_ev.evidence_ref,
+            "filename": ref_ev.filename,
+            "relationship": "Authentic physical camera capture baseline",
+        },
         "attribution_ceiling": casebuild.attribution_ceiling(db, ev, run),
     }
 
@@ -1075,9 +1300,10 @@ def get_audio_forensics(evidence_ref: str, db: Session = Depends(get_db)):
     ev = db.query(Evidence).filter(Evidence.evidence_ref == evidence_ref).first()
     if not ev:
         raise HTTPException(404, "evidence not found")
-    if not Path(ev.stored_path).exists():
+    p = get_evidence_path(ev)
+    if not p.exists():
         raise HTTPException(404, "evidence file not found on disk")
-    return audio_svc.analyze_audio_forensics(ev.stored_path)
+    return audio_svc.analyze_audio_forensics(p)
 
 
 @app.post("/api/evidence/{evidence_ref}/stress-test")
@@ -1116,10 +1342,20 @@ def get_stress(evidence_ref: str, db: Session = Depends(get_db)):
     else:
         mean_d, max_d, s_grade, s_summary = None, None, "INSUFFICIENT_DATA", "Insufficient valid variants to evaluate directional stability."
 
+    ref_ev = comp_svc.get_authentic_reference(db, ev.case_id)
+    is_ref = (ev.forensic_role == "authentic_reference") or (ref_ev and ref_ev.id == ev.id)
+    robustness_label = "AUTHENTIC CAMERA REFERENCE ROBUSTNESS" if is_ref else "AI / MODIFIED DERIVATIVE ROBUSTNESS"
+
     return {
         "stress_id": st.id, "status": st.status, "baseline_score": st.baseline_score,
+        "forensic_role": "authentic_reference" if is_ref else "derivative",
+        "robustness_label": robustness_label,
         "reliability_boundary": st.reliability_boundary, "recommendation": st.recommendation,
         "error": st.error, "finished_at": _iso(st.finished_at),
+        "disclaimer": (
+            "Laundering stress testing applies deterministic local transformations (FFmpeg transcode, scale, recompress) "
+            "to measure detector signal persistence. Scores indicate stability under laundering, not conclusive authenticity."
+        ),
         "directional_stability": {
             "grade": s_grade,
             "mean_delta": mean_d,
@@ -1271,6 +1507,11 @@ def download_packet(packet_id: int, db: Session = Depends(get_db)):
         raise HTTPException(403, "access denied")
     if not path.exists():
         raise HTTPException(404, "packet not available")
+    ev = db.get(Evidence, p.evidence_id) if p.evidence_id else None
+    audit_svc.record(db, case_id=p.case_id, action="Court packet downloaded",
+                     component="court packager", evidence_ref=ev.evidence_ref if ev else None,
+                     evidence_hash=ev.sha256 if ev else None,
+                     payload={"packet_id": p.id, "packet_sha256": p.packet_sha256})
     return FileResponse(path, media_type="application/zip", filename=path.name)
 
 
@@ -1285,6 +1526,11 @@ def download_doc(packet_id: int, key: str, inline: bool = False, db: Session = D
         raise HTTPException(403, "access denied")
     if not path.exists():
         raise HTTPException(404, "document not available")
+    ev = db.get(Evidence, p.evidence_id) if p.evidence_id else None
+    audit_svc.record(db, case_id=p.case_id, action=f"Court packet document accessed: {key}",
+                     component="court packager", evidence_ref=ev.evidence_ref if ev else None,
+                     evidence_hash=ev.sha256 if ev else None,
+                     payload={"packet_id": p.id, "document_key": key})
     disp = "inline" if inline else "attachment"
     return FileResponse(path, media_type="application/pdf", filename=path.name, content_disposition_type=disp)
 

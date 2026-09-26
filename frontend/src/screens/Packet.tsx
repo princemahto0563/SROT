@@ -17,7 +17,7 @@ const DOC_LABEL: Record<string, string> = {
 };
 
 export default function Packet() {
-  return <RequireEvidence>{(ev) => <Body evidence={ev} />}</RequireEvidence>;
+  return <RequireEvidence>{(ev) => <Body key={ev.evidence_ref} evidence={ev} />}</RequireEvidence>;
 }
 
 function Body({ evidence }: { evidence: Evidence }) {

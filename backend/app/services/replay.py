@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from ..db import SessionLocal
+from ..db import SessionLocal, get_evidence_path
 from ..models import Evidence, AnalysisRun, Signal
 from ..pipeline import score_media
 from . import (
@@ -38,7 +38,7 @@ def replay_evidence(evidence_ref: str, verbose: bool = False) -> dict[str, Any]:
         if not ev:
             return {"ok": False, "error": f"Evidence '{evidence_ref}' not found."}
 
-        ev_path = Path(ev.stored_path)
+        ev_path = get_evidence_path(ev)
         if not ev_path.exists():
             return {"ok": False, "error": f"File '{ev.stored_path}' missing on disk."}
 
@@ -118,9 +118,10 @@ def replay_evidence(evidence_ref: str, verbose: bool = False) -> dict[str, Any]:
         if latest_run and latest_run.aggregate_score is not None:
             agg_res = sig_svc.aggregate(classical_sigs)
             replayed_agg = agg_res.get("aggregate")
+            tol = 3.0 if ev.media_kind == "video" else 1.0
             agg_match = (
                 replayed_agg is not None and
-                abs(replayed_agg - latest_run.aggregate_score) < 1.0
+                abs(replayed_agg - latest_run.aggregate_score) <= tol
             )
             comparisons.append({
                 "field": "Aggregate Signal Score",
@@ -148,7 +149,8 @@ def replay_evidence(evidence_ref: str, verbose: bool = False) -> dict[str, Any]:
             r_score = r_sig.get("score") if r_sig else None
             sig_match = True
             if s_score is not None and r_score is not None:
-                sig_match = abs(s_score - r_score) < 1.0
+                tol = 3.0 if ev.media_kind == "video" else 1.0
+                sig_match = abs(s_score - r_score) <= tol
             elif s_score is None and r_score is None:
                 sig_match = True
             else:

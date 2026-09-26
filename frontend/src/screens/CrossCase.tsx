@@ -94,7 +94,7 @@ export default function CrossCase() {
                       </Cell>
                       <Cell mono>{m.hamming} / 64 bits</Cell>
                       <Cell>
-                        <Chip tone="violet" dot={false}>INFERRED: CAMPAIGN</Chip>
+                        <Chip tone="violet" dot={false}>POTENTIAL MEDIA REUSE / SYNDICATION</Chip>
                       </Cell>
                       <Cell>{fmtDate(m.seen_at)}</Cell>
                     </Row>

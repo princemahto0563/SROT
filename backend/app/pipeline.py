@@ -13,7 +13,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from .db import SessionLocal, WORK_DIR
+from .db import SessionLocal, WORK_DIR, get_evidence_path
 from .models import (
     Case, Evidence, AnalysisRun, Signal, FrameAnalysis, Fingerprint, CorpusItem,
     OriginMatch, ExtractedEntity, RecaptureResult, CampaignMatch, FingerprintLedger,
@@ -162,7 +162,7 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
 
             work = Path(WORK_DIR) / ev.evidence_ref
             work.mkdir(parents=True, exist_ok=True)
-            src = Path(ev.stored_path)
+            src = get_evidence_path(ev)
 
             # ── INGEST facts ────────────────────────────────────────────────────
             _set_stage(db, run, "INGEST", "running")
@@ -429,21 +429,36 @@ def _run_ocr(db: Session, ev: Evidence, run: AnalysisRun, frame_records: list[di
         if (time.time() - start_t) > max_time_s:
             break
         try:
+            # 1. Standard text OCR
             res = ocr_svc.ocr_frame(rec["path"], timeout_s=3.0)
-            if not res.get("ok") or not res.get("words"):
-                continue
-            for e in ocr_svc.extract_entities(res["words"], rec["frame_index"],
-                                              rec.get("frame_number"), rec.get("timestamp_s")):
-                key = (e["entity_type"], e["value"].lower())
+            if res.get("ok") and res.get("words"):
+                for e in ocr_svc.extract_entities(res["words"], rec["frame_index"],
+                                                  rec.get("frame_number"), rec.get("timestamp_s")):
+                    key = (e["entity_type"], e["value"].lower())
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    made.append(ExtractedEntity(
+                        evidence_id=ev.id, run_id=run.id, value=e["value"],
+                        entity_type=e["entity_type"], raw_text=e["raw_text"], language=e["language"],
+                        frame_index=e["frame_index"], frame_number=e["frame_number"],
+                        timestamp_s=e["timestamp_s"], bbox_json=jsonable(e["bbox"]),
+                        ocr_confidence=e["ocr_confidence"], method=e["method"], region=e["region"]))
+
+            # 2. QR code detection (payload + coordinates)
+            qr_results = ocr_svc.detect_qr_codes(rec["path"], rec["frame_index"],
+                                                 rec.get("frame_number"), rec.get("timestamp_s"))
+            for qr in qr_results:
+                key = (qr["entity_type"], qr["value"].lower())
                 if key in seen:
                     continue
                 seen.add(key)
                 made.append(ExtractedEntity(
-                    evidence_id=ev.id, run_id=run.id, value=e["value"],
-                    entity_type=e["entity_type"], raw_text=e["raw_text"], language=e["language"],
-                    frame_index=e["frame_index"], frame_number=e["frame_number"],
-                    timestamp_s=e["timestamp_s"], bbox_json=jsonable(e["bbox"]),
-                    ocr_confidence=e["ocr_confidence"], method=e["method"], region=e["region"]))
+                    evidence_id=ev.id, run_id=run.id, value=qr["value"],
+                    entity_type=qr["entity_type"], raw_text=qr["raw_text"], language=qr["language"],
+                    frame_index=qr["frame_index"], frame_number=qr["frame_number"],
+                    timestamp_s=qr["timestamp_s"], bbox_json=jsonable(qr["bbox"]),
+                    ocr_confidence=qr["ocr_confidence"], method=qr["method"], region=qr["region"]))
         except Exception:
             continue
 
@@ -495,7 +510,7 @@ def run_stress(evidence_id: int, stress_id: int) -> None:
                             "phash_similarity": m["similarity"]})
             return out
 
-        res = stress_svc.run_stress_test(Path(ev.stored_path), work, is_image, score_fn, baseline)
+        res = stress_svc.run_stress_test(get_evidence_path(ev), work, is_image, score_fn, baseline)
 
         db.add_all([StressVariant(
             stress_id=st.id, name=v["name"], transform=v["transform"],

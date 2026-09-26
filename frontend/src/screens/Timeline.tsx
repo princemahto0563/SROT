@@ -4,10 +4,22 @@ import { useApi, fmtDate, fmtNum } from "../lib/api";
 import type { Lead, TimelineRow } from "../lib/api";
 
 const KIND_TONE: Record<string, "accent" | "amber" | "violet" | "ok" | "muted"> = {
+  "SOURCE OBSERVATION": "violet",
+  "COLLECTION": "accent",
+  "SROT INGESTION": "ok",
+  "FORENSIC ANALYSIS": "amber",
+  "OCR EXTRACTION": "accent",
+  "ORIGIN MATCH": "violet",
+  "GRAPH RELATION": "muted",
+  "AUDIT EVENT": "ok",
+  "COURT PACKET GENERATION": "accent",
   corpus_observation: "violet",
-  ingest: "accent",
-  analysis: "ok",
+  ingest: "ok",
+  analysis: "amber",
   recapture: "amber",
+  evidence: "ok",
+  corpus: "violet",
+  system: "muted",
 };
 
 export default function Timeline() {

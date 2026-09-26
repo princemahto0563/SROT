@@ -18,6 +18,7 @@ import Timeline from "./screens/Timeline";
 import Audit from "./screens/Audit";
 import Packet from "./screens/Packet";
 import Benchmark from "./screens/Benchmark";
+import Comparison from "./screens/Comparison";
 
 function ProtectedLayout() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
             <Route element={<ProtectedLayout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/upload" element={<Intake />} />
+              <Route path="/compare" element={<Comparison />} />
               <Route path="/analysis" element={<Analysis />} />
               <Route path="/neural" element={<Neural />} />
               <Route path="/origin" element={<OriginTrace />} />

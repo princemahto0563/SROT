@@ -1,12 +1,13 @@
 """Append-only, hash-linked audit chain. Any alteration breaks verification."""
 from __future__ import annotations
 import datetime as dt
-import hashlib, json
+import hashlib, json, threading
 from typing import Any
 from sqlalchemy.orm import Session
 from ..models import AuditLog, utcnow
 
 GENESIS = "0" * 64
+_audit_lock = threading.RLock()
 
 
 def canonical_ts(value: Any) -> str:
@@ -41,20 +42,25 @@ def _digest(prev_hash: str, occurred_at: str, action: str, component: str,
 def record(db: Session, *, case_id: int, action: str, component: str,
            evidence_ref: str | None = None, evidence_hash: str | None = None,
            payload: dict[str, Any] | None = None, actor: str = "system") -> AuditLog:
-    last = (db.query(AuditLog).filter(AuditLog.case_id == case_id)
-            .order_by(AuditLog.id.desc()).first())
-    prev = last.current_hash if last else GENESIS
-    at = utcnow()
-    cur = _digest(prev, canonical_ts(at), action, component, actor,
-                  evidence_ref, evidence_hash, payload)
-    row = AuditLog(case_id=case_id, evidence_ref=evidence_ref, occurred_at=at,
-                   action=action, component=component, actor=actor,
-                   payload_json=payload or {}, evidence_hash=evidence_hash,
-                   prev_hash=prev, current_hash=cur)
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return row
+    with _audit_lock:
+        try:
+            db.expire_all()
+        except Exception:
+            pass
+        last = (db.query(AuditLog).filter(AuditLog.case_id == case_id)
+                .order_by(AuditLog.id.desc()).first())
+        prev = last.current_hash if last else GENESIS
+        at = utcnow()
+        cur = _digest(prev, canonical_ts(at), action, component, actor,
+                      evidence_ref, evidence_hash, payload)
+        row = AuditLog(case_id=case_id, evidence_ref=evidence_ref, occurred_at=at,
+                       action=action, component=component, actor=actor,
+                       payload_json=payload or {}, evidence_hash=evidence_hash,
+                       prev_hash=prev, current_hash=cur)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row
 
 
 def verify_chain(db: Session, case_id: int) -> dict[str, Any]:

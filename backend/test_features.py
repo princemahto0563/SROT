@@ -24,6 +24,20 @@ TMP = Path(tempfile.gettempdir()) / "srot_tests"; TMP.mkdir(exist_ok=True)
 
 PASS, FAIL = [], []
 
+# Authenticate test session against police authentication gate
+SESSION = requests.Session()
+try:
+    login_res = SESSION.post(f"{API}/auth/login", json={
+        "badge_id": "DEMO-OFFICER",
+        "password": os.environ.get("DEMO_OFFICER_PASSWORD", "SROT@Police2026#Demo")
+    }, timeout=10)
+    if login_res.status_code == 200:
+        token = login_res.json().get("token")
+        SESSION.headers.update({"Authorization": f"Bearer {token}"})
+except Exception:
+    pass
+requests = SESSION
+
 
 def head(t: str) -> None:
     print(f"\n{'=' * 68}\n{t}\n{'=' * 68}")

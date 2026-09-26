@@ -43,6 +43,12 @@ def get_available_traces() -> list[dict[str, str]]:
             "description": "Spatial edge energy distribution highlighting unnatural sharp vector borders vs natural optical roll-off.",
             "interpretation": "UI elements and synthetic vector boundaries produce extreme localized gradient spikes compared to optical camera lenses.",
         },
+        {
+            "id": "difference_heatmap",
+            "name": "Reference Difference Heatmap",
+            "description": "Blended pixel and gradient delta map comparing current media against the designated authentic camera reference baseline.",
+            "interpretation": "Highlights localized manipulation, added text banners, pasted QR codes, or altered portrait regions against the authentic baseline.",
+        },
     ]
 
 

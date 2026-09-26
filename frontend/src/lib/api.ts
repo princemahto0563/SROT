@@ -130,18 +130,153 @@ export type Evidence = {
   audio_codec: string | null; container_format: string | null;
   encoder_tag: string | null; has_audio: boolean; exif_fields: number;
   exif: Record<string, unknown>; c2pa_present: boolean; c2pa_note: string;
+  forensic_role?: string;
+  reference_evidence_id?: number | null;
+  classification_basis?: string | null;
+  source_platform?: string | null;
+  source_account?: string | null;
+  source_post_id?: string | null;
+  source_url?: string | null;
+  source_observed_at?: string | null;
+  collection_at?: string | null;
   latest_run: RunSummary | null;
 };
 
 export type CaseSummary = {
   id: number; case_ref: string; title: string; category: string;
-  officer: string; summary: string; opened_at: string;
+  officer: string; summary: string; opened_at?: string; created_at?: string;
+  authentic_reference_ref?: string | null;
+  has_authentic_reference?: boolean;
   counts?: Record<string, number>;
 };
 
 export type CaseDetail = CaseSummary & {
   evidence: Evidence[];
   audit_chain: { verified: boolean; entries: number; message: string; broken_at_id: number | null };
+};
+
+export type IdentifierDelta = {
+  entity_type: string;
+  value: string;
+  observation: string;
+};
+
+export type ForensicComparison = {
+  case_id: number;
+  case_ref: string;
+  reference_evidence_ref: string;
+  derivative_evidence_ref: string;
+  comparison_timestamp: string;
+  identity: {
+    reference: {
+      evidence_ref: string;
+      filename: string;
+      sha256: string;
+      size_bytes: number;
+      width: number | null;
+      height: number | null;
+      mime_type: string;
+      container_format: string | null;
+      c2pa_present: boolean;
+      exif_fields: number;
+      forensic_role: string;
+    };
+    derivative: {
+      evidence_ref: string;
+      filename: string;
+      sha256: string;
+      size_bytes: number;
+      width: number | null;
+      height: number | null;
+      mime_type: string;
+      container_format: string | null;
+      c2pa_present: boolean;
+      exif_fields: number;
+      forensic_role: string;
+    };
+    size_delta_bytes: number;
+    dimension_delta: string;
+  };
+  visual: {
+    phash_distance: number;
+    phash_similarity: number;
+    best_view_distance: number;
+    best_view_similarity: number;
+    best_view_pair: [string, string];
+    ssim: number;
+    mean_pixel_delta: number;
+    edge_delta: number;
+    color_histogram_correlation: number;
+  };
+  traces: {
+    reference: { noise_uniformity: number; ela_mean_error: number; gradient_p95: number };
+    derivative: { noise_uniformity: number; ela_mean_error: number; gradient_p95: number };
+    noise_uniformity_delta: number;
+    ela_error_delta: number;
+    gradient_p95_delta: number;
+    trace_difference_index: number;
+  };
+  ai_signal: {
+    reference_score: number | null;
+    derivative_score: number | null;
+    delta: number | null;
+    reference_frames_sampled: number;
+    derivative_frames_sampled: number;
+    reference_suspicious_frames: number;
+    derivative_suspicious_frames: number;
+    detector_backend: string;
+    signal_label: string;
+    interpretation: string;
+  };
+  identifiers: {
+    common_count: number;
+    added_count: number;
+    removed_count: number;
+    common: IdentifierDelta[];
+    added: IdentifierDelta[];
+    removed: IdentifierDelta[];
+    qr?: {
+      detected: boolean;
+      payload?: string;
+      is_decoded?: boolean;
+      coordinates?: number[] | null;
+      status?: string;
+    };
+    ocr_overlap_percent: number;
+    evidence_label: string;
+  };
+  recapture: {
+    reference: { likelihood: string; score: number | null };
+    derivative: { likelihood: string; score: number | null };
+    interpretation: string;
+  };
+  origin: {
+    relationship: string;
+    note: string;
+    disclaimer: string;
+  };
+  assessment: string;
+  why_srot_reached_result: string[];
+  what_srot_cannot_establish: string[];
+  limitations: string[];
+  chart_metrics: {
+    signal: string;
+    reference: number;
+    derivative: number;
+    delta: number;
+    evidence_basis: string;
+  }[];
+  chart_disclaimer: string;
+  derivative?: Evidence;
+};
+
+export type CaseComparisonPayload = {
+  has_reference: boolean;
+  case_ref: string;
+  reference: Evidence | null;
+  comparisons: ForensicComparison[];
+  count: number;
+  scientific_boundaries: string;
 };
 
 export type Signal = {
@@ -161,13 +296,16 @@ export type Analysis = {
 
 export type OriginMatch = {
   corpus_id: number; label: string; source_kind: string; observed_at: string | null;
+  source_observation_at?: string | null; collected_at?: string | null;
+  evidence_ingested_at?: string | null;
   similarity: number; hamming: number; hash_type: string; normalisation: string | null;
   matched_frames: number; total_frames: number; is_earliest: boolean;
   transform: string; is_synthetic: boolean; sha256: string; note: string;
 };
 
 export type Origin = {
-  evidence_ref: string; corpus_size: number; matches: OriginMatch[];
+  evidence_ref: string; evidence_ingested_at?: string | null;
+  corpus_size: number; matches: OriginMatch[];
   match_count: number; earliest: OriginMatch | null;
   propagation_span_days: number | null; max_similarity: number | null;
   method: string; threshold: string;
@@ -339,6 +477,7 @@ export type ReplayResult = {
 
 export type Stress = {
   stress_id?: number; status: string; baseline_score?: number | null;
+  forensic_role?: string; robustness_label?: string; disclaimer?: string;
   reliability_boundary?: string | null; recommendation?: string | null;
   error?: string | null; finished_at?: string | null;
   directional_stability?: DirectionalStability;
@@ -374,17 +513,45 @@ export function useApi<T>(path: string | null, deps: unknown[] = []): AsyncState
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!!path);
   const [tick, setTick] = useState(0);
-  const alive = useRef(true);
-
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const prevPath = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!path) { setData(null); setLoading(false); return; }
+    let active = true;
+    if (!path) {
+      setData(null);
+      setError(null);
+      setLoading(false);
+      prevPath.current = null;
+      return;
+    }
+    const pathChanged = prevPath.current !== path;
+    prevPath.current = path;
+
+    // Only clear old data if navigating to a different endpoint/resource
+    if (pathChanged) {
+      setData(null);
+      setError(null);
+    }
     setLoading(true);
     api.get<T>(path)
-      .then((d) => { if (alive.current) { setData(d); setError(null); } })
-      .catch((e: Error) => { if (alive.current) { setError(e.message); setData(null); } })
-      .finally(() => { if (alive.current) setLoading(false); });
+      .then((d) => {
+        if (active) {
+          setData(d);
+          setError(null);
+        }
+      })
+      .catch((e: Error) => {
+        if (active) {
+          setError(e.message);
+          if (pathChanged) setData(null);
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, tick, ...deps]);
 

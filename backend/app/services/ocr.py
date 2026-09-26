@@ -55,6 +55,7 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
     ("URL",     re.compile(r"\b(?:https?://)?(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:/[^\s]*)?\b")),
     ("HANDLE",  re.compile(r"(?<![\w@])@[A-Za-z0-9_.]{3,30}\b")),
     ("PHONE",   re.compile(r"\b(?:\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b")),
+    ("EMAIL",   re.compile(r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b")),
     ("AMOUNT",  re.compile(r"(?:₹|Rs\.?|INR)\s?\d[\d,]{2,}(?:\.\d{1,2})?", re.I)),
     ("TIME",    re.compile(r"\b(?:[01]?\d|2[0-3]):[0-5]\d(?:\s?(?:AM|PM|am|pm))?\b")),
     ("DATE",    re.compile(r"\b\d{1,2}[/-][A-Za-z]{3,9}[/-]\d{2,4}\b|\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b")),
@@ -267,3 +268,51 @@ def extract_entities(words: list[dict], frame_index: int, frame_number: int | No
                 "method": "tesseract-ocr + pattern match",
             })
     return out
+
+
+def detect_qr_codes(image_path: str | Path, frame_index: int = 0, frame_number: int | None = None,
+                    timestamp_s: float | None = None) -> list[dict[str, Any]]:
+    """
+    Detect QR codes in an image using OpenCV QRCodeDetector.
+    If decoded, returns payload and coordinates.
+    If detected but payload cannot be decoded reliably, returns:
+    'QR detected; payload not reliably decoded' with coordinates.
+    Never invents QR data.
+    """
+    p = str(image_path)
+    img = cv2.imread(p)
+    if img is None:
+        return []
+
+    detector = cv2.QRCodeDetector()
+    results: list[dict[str, Any]] = []
+
+    try:
+        val, pts, _ = detector.detectAndDecode(img)
+        if pts is not None and len(pts) > 0:
+            pts_list = pts.reshape(-1, 2).tolist()
+            xs = [pt[0] for pt in pts_list]
+            ys = [pt[1] for pt in pts_list]
+            bbox = [int(min(xs)), int(min(ys)), int(max(xs) - min(xs)), int(max(ys) - min(ys))]
+            payload = val.strip() if val else "QR detected; payload not reliably decoded"
+            is_decoded = bool(val and val.strip())
+
+            results.append({
+                "value": payload,
+                "entity_type": "QR",
+                "raw_text": val if val else "QR Code (Visual matrix pattern detected)",
+                "language": "Latin (QR Binary/Text)" if is_decoded else "QR Graphic Pattern",
+                "frame_index": frame_index,
+                "frame_number": frame_number,
+                "timestamp_s": timestamp_s,
+                "bbox": bbox,
+                "coordinates": pts_list,
+                "ocr_confidence": 95.0 if is_decoded else 75.0,
+                "region": "qr-matrix",
+                "method": "opencv-qrcode-detector",
+                "decoded": is_decoded,
+            })
+    except Exception:
+        pass
+
+    return results

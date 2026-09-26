@@ -2,6 +2,7 @@
 from __future__ import annotations
 import hashlib, mimetypes, re, unicodedata
 from pathlib import Path
+from ..db import get_evidence_path
 
 MAX_UPLOAD_BYTES = 300 * 1024 * 1024      # 300 MB ceiling
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}

@@ -225,6 +225,16 @@ def collect(db: Session, evidence_id: int) -> dict[str, Any]:
         "total_count": len(variants),
     }
 
+    comparison = None
+    ref_ev = None
+    try:
+        from . import comparison as comp_svc
+        ref_ev = comp_svc.get_authentic_reference(db, case.id)
+        if ref_ev and ref_ev.id != ev.id:
+            comparison = comp_svc.compare_evidence(db, ref_ev, ev)
+    except Exception:
+        pass
+
     return {
         "generated_at": utcnow(),
         "case": case, "evidence": ev, "run": run,
@@ -244,6 +254,8 @@ def collect(db: Session, evidence_id: int) -> dict[str, Any]:
         "cross_assessment": cross_assessment,
         "evidence_matrix": cross_assessment.get("evidence_matrix", []),
         "directional_stability": directional_stability,
+        "comparison": comparison,
+        "authentic_reference": ref_ev,
     }
 
 
@@ -813,10 +825,37 @@ detector is bundled. No audio score is reported.
 <td>{{ c.mode }}</td><td>{{ 'Yes' if c.established else 'No' }}</td>
 <td class="small">{{ c.detail }}</td></tr>{% endfor %}</table>
 
-<h2>16. Limitations</h2>
+{% if comparison %}
+<h2>16. AUTHENTIC REFERENCE VS DERIVATIVE COMPARISON</h2>
+<p class="small"><b>Case Reference:</b> {{ authentic_reference.evidence_ref }} ({{ authentic_reference.filename }}) · <b>Role:</b> AUTHENTIC REFERENCE — DEMO GROUND TRUTH{% if authentic_reference.exif_json and (authentic_reference.exif_json.get('Make') or authentic_reference.exif_json.get('Model')) %} · <b>Camera Source:</b> {{ authentic_reference.exif_json.get('Make') }} {{ authentic_reference.exif_json.get('Model') }}{% endif %}</p>
+<table>
+<tr><th>Forensic Signal</th><th>Authentic Reference</th><th>Current Derivative</th><th>Measured Difference</th><th>Evidentiary Basis</th></tr>
+{% for m in comparison.chart_metrics %}
+<tr>
+  <td><b>{{ m.signal }}</b></td>
+  <td class="mono">{{ m.reference }}</td>
+  <td class="mono">{{ m.derivative }}</td>
+  <td class="mono">{% if m.delta > 0 %}+{% endif %}{{ m.delta }}</td>
+  <td class="small">{{ m.evidence_basis }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<h3>OCR &amp; Identifier Differencing</h3>
+<table>
+<tr><td style="width:28%"><b>Common Identifiers</b></td><td>{% for i in comparison.identifiers.common %}{{ i.value }} ({{ i.entity_type }}){% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</td></tr>
+<tr><td><b>Added in Derivative</b></td><td>{% for i in comparison.identifiers.added %}<span style="color:#B91C1C"><b>{{ i.value }}</b></span> ({{ i.entity_type }}){% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</td></tr>
+<tr><td><b>Removed from Reference</b></td><td>{% for i in comparison.identifiers.removed %}<span style="color:#4B5563">{{ i.value }}</span> ({{ i.entity_type }}){% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</td></tr>
+<tr><td><b>QR Matrix Evidence</b></td><td>{% if comparison.identifiers.qr.detected %}QR pattern detected. Payload status: <i>{{ comparison.identifiers.qr.status }}</i>{% else %}No QR pattern detected{% endif %}</td></tr>
+</table>
+<p class="small"><b>Assessment:</b> {{ comparison.assessment }}<br>
+<b>Scientific Boundary:</b> All values represent measured physical and structural metrics. Model scores are forensic decision-support signals, not calibrated probabilities and not standalone proof of manipulation. Forensic analysis requires human examiner review.</p>
+{% endif %}
+
+<h2>17. Limitations</h2>
 <div class="warn"><ul>{% for l in limitations %}<li>{{ l }}</li>{% endfor %}</ul></div>
 
-<h2>17. Conclusion</h2>
+<h2>18. Conclusion</h2>
 <p>Based on the available evidence, the analysed media returns an assessment of
 <b>{{ run.assessment if run else 'no completed analysis' }}</b>
 {% if run %}with an aggregate signal score of {{ run.aggregate_score|f }}/100 and a confidence band
@@ -917,8 +956,19 @@ DOSSIER_TPL = _HEAD + """
 <p><b>Display Recapture &amp; Interface:</b> {{ recapture.likelihood }} indication (Score: {{ recapture.score|f }}/100).
 {% if recovered_handles %}Recovered candidate handle(s): {% for h in recovered_handles %}<span class="mono">{{ h.handle }}</span> ({{ h.confidence }}% OCR confidence on frame {{ h.frame_index }}){% if not loop.last %}, {% endif %}{% endfor %}.{% else %}No interface handle recovered.{% endif %}</p>
 {% endif %}
+{% if comparison %}
+<h2>5. AUTHENTIC REFERENCE VS CASE DERIVATIVE COMPARISON</h2>
+<table style="margin-bottom:4px">
+<tr><td style="width:34%"><b>Authentic Reference:</b></td><td class="mono">{{ authentic_reference.evidence_ref }} ({{ authentic_reference.filename }})</td></tr>
+<tr><td><b>Visual Similarity:</b></td><td>{{ comparison.visual.best_view_similarity }}% perceptual similarity (pHash Hamming distance: {{ comparison.visual.best_view_distance }} bits, SSIM: {{ comparison.visual.ssim }})</td></tr>
+<tr><td><b>AI Model Signal Delta:</b></td><td>Authentic: {{ comparison.ai_signal.reference_score }}/100 → Derivative: {{ comparison.ai_signal.derivative_score }}/100 (Δ = {% if comparison.ai_signal.delta > 0 %}+{% endif %}{{ comparison.ai_signal.delta }} points)</td></tr>
+<tr><td><b>OCR Delta:</b></td><td>{{ comparison.identifiers.added_count }} added (including donation/cancer text), {{ comparison.identifiers.removed_count }} removed authentic event identifiers</td></tr>
+<tr><td><b>QR Matrix Evidence:</b></td><td>{% if comparison.identifiers.qr.detected %}QR pattern detected. Status: <i>{{ comparison.identifiers.qr.status }}</i>{% else %}No QR pattern detected{% endif %}</td></tr>
+<tr><td><b>Comparative Finding:</b></td><td><b>{{ comparison.assessment }}</b></td></tr>
+</table>
+{% endif %}
 
-<h2>5. Origin Propagation &amp; Stress Robustness</h2>
+<h2>6. Origin Propagation &amp; Stress Robustness</h2>
 <table style="margin-bottom:4px">
 <tr>
 <td style="width:50%"><b>Earliest Corpus Copy:</b> {% if earliest %}{{ earliest.corpus.label }} (Sim: {{ '%.1f'|format(earliest.match.similarity) }}%, {{ earliest.corpus.observed_at|f }}){% else %}No match in searched reference corpus{% endif %}</td>
@@ -930,7 +980,7 @@ DOSSIER_TPL = _HEAD + """
 </tr>
 </table>
 
-<h2>6. Deterministic Replay &amp; Chain-of-Custody Attestation</h2>
+<h2>7. Deterministic Replay &amp; Chain-of-Custody Attestation</h2>
 <table>
 <tr><td style="width:34%"><b>Deterministic Replay</b></td><td>100% Mathematically Reproducible (Pipeline v4.0.0-phase6 on {{ neural_info.device if neural_info else 'CPU' }})</td></tr>
 <tr><td><b>Audit Chain Status</b></td><td>{{ chain.message }} ({{ audits|length }} immutable hash-linked entries)</td></tr>

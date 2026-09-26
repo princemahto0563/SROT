@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { EmptyState, Notice } from "./ui";
@@ -18,7 +18,7 @@ export type ReadinessStatus =
  * Authoritative analysis readiness determination.
  * Works for ANY evidence item dynamically.
  */
-export function getReadiness(
+function getReadiness(
   run?: {
     status?: string | null;
     error?: string | null;
@@ -73,7 +73,11 @@ export function RequireEvidence({
 }: { children: (ev: Evidence) => React.ReactNode }) {
   const { current, evidence, detailLoading, detailError, refresh } = useSession();
 
-  // Active polling of the job status while in progress
+  // Active polling of the job status only while actively queued or running
+  const isPending =
+    current?.latest_run?.status === "queued" ||
+    current?.latest_run?.status === "running";
+
   const job = usePolling<{
     status: string;
     stage: string | null;
@@ -81,21 +85,28 @@ export function RequireEvidence({
     error?: string | null;
     assessment?: string | null;
   }>(
-    current ? `/evidence/${current.evidence_ref}/job` : null,
+    current && isPending ? `/evidence/${current.evidence_ref}/job` : null,
     (j) => j.status === "queued" || j.status === "running",
     1200,
   );
 
-  // When job reaches terminal status in polling, trigger session refresh
+  // When job transitions from pending to terminal status, trigger session refresh
+  const prevJobStatus = useRef<string | null>(null);
   useEffect(() => {
-    if (job.data?.status === "completed" || job.data?.status === "failed") {
+    const s = job.data?.status;
+    if (
+      prevJobStatus.current &&
+      (prevJobStatus.current === "queued" || prevJobStatus.current === "running") &&
+      (s === "completed" || s === "failed")
+    ) {
       refresh();
     }
+    prevJobStatus.current = s ?? null;
   }, [job.data?.status, refresh]);
 
-  // Live direct fetch of the evidence item so completed fields and latest_run are immediate
+  // Live direct fetch of the evidence item only while actively pending
   const liveEv = useApi<Evidence>(
-    current ? `/evidence/${current.evidence_ref}` : null,
+    current && isPending ? `/evidence/${current.evidence_ref}` : null,
     [job.data?.status]
   );
 
@@ -122,7 +133,9 @@ export function RequireEvidence({
   }
   if (!current) return <EmptyState title="Select an evidence item in the sidebar." />;
 
-  const effectiveEvidence = liveEv.data ?? current;
+  const effectiveEvidence = (liveEv.data && liveEv.data.evidence_ref === current.evidence_ref)
+    ? liveEv.data
+    : current;
   const effectiveRun: RunSummary | null =
     effectiveEvidence.latest_run ??
     (job.data

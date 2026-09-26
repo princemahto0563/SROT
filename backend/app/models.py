@@ -55,6 +55,17 @@ class Evidence(Base):
     exif_json = Column(JSON)
     c2pa_present = Column(Boolean, default=False)
     c2pa_note = Column(String, default="")
+    # Forensic role and relationship
+    forensic_role = Column(String, default="UNKNOWN")  # AUTHENTIC_REFERENCE | AI_GENERATED | AI_MODIFIED | RECAPTURED_COPY | UNKNOWN
+    reference_evidence_id = Column(Integer, ForeignKey("evidence.id"), nullable=True)
+    source_platform = Column(String, nullable=True)
+    source_account = Column(String, nullable=True)
+    source_post_id = Column(String, nullable=True)
+    source_url = Column(String, nullable=True)
+    source_observed_at = Column(DateTime, nullable=True)
+    source_timezone = Column(String, nullable=True)
+    collection_at = Column(DateTime, nullable=True)
+    classification_basis = Column(Text, nullable=True)
     case = relationship("Case", back_populates="evidence")
 
 
@@ -318,6 +329,33 @@ class CourtPacket(Base):
     zip_path = Column(String)
     files_json = Column(JSON)           # {doc_key: path}
     packet_sha256 = Column(String)
+
+
+class ForensicComparison(Base):
+    """
+    Pairwise forensic comparison record between an authentic reference and a case derivative.
+    Every metric recorded here is derived from actual computed measurements.
+    """
+    __tablename__ = "forensic_comparisons"
+    id = Column(Integer, primary_key=True)
+    case_id = Column(Integer, ForeignKey("cases.id"), index=True, nullable=False)
+    reference_evidence_id = Column(Integer, ForeignKey("evidence.id"), index=True, nullable=False)
+    derivative_evidence_id = Column(Integer, ForeignKey("evidence.id"), index=True, nullable=False)
+    comparison_timestamp = Column(DateTime, default=utcnow)
+    visual_similarity = Column(Float)
+    phash_distance = Column(Integer)
+    ssim = Column(Float)
+    edge_delta = Column(Float)
+    noise_delta = Column(Float)
+    color_hist_delta = Column(Float)
+    ocr_overlap = Column(Float)
+    identifier_delta_json = Column(JSON)
+    ai_signal_delta = Column(Float)
+    recapture_delta = Column(Float)
+    c2pa_delta = Column(String)
+    assessment = Column(String)
+    limitations = Column(Text)
+    details_json = Column(JSON)
 
 
 class NeuralFrameResult(Base):

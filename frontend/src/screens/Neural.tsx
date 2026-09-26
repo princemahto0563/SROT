@@ -1,9 +1,11 @@
-import { Cpu, AlertTriangle, CheckCircle, HelpCircle, Info, ShieldAlert } from "lucide-react";
+import { Cpu, AlertTriangle, CheckCircle, HelpCircle, Info, ShieldAlert, Scale } from "lucide-react";
 import {
   Async, Chip, EmptyState, Field, Meter, Notice, PageHead, Panel, Table, Row, Cell,
 } from "../components/ui";
 import { RequireEvidence } from "../components/guards";
-import { useApi } from "../lib/api";
+import { useSession } from "../state/session";
+import { useApi, fmtNum } from "../lib/api";
+import type { CaseComparisonPayload } from "../lib/api";
 
 type FrameResult = {
   frame_index: number;
@@ -81,13 +83,20 @@ const scoreTone = (s: number | null): "danger" | "amber" | "accent" | "ok" | "mu
 export default function Neural() {
   return (
     <RequireEvidence>
-      {(ev) => <NeuralBody evidenceRef={ev.evidence_ref} />}
+      {(ev) => <NeuralBody key={ev.evidence_ref} evidenceRef={ev.evidence_ref} />}
     </RequireEvidence>
   );
 }
 
 function NeuralBody({ evidenceRef }: { evidenceRef: string }) {
   const data = useApi<NeuralPayload>(`/evidence/${evidenceRef}/neural-analysis`);
+  const { caseRef } = useSession();
+  const comparison = useApi<CaseComparisonPayload>(caseRef ? `/cases/${caseRef}/comparison` : null);
+
+  const activeComp = comparison.data?.comparisons?.find(
+    (c) => c.derivative_evidence_ref === evidenceRef
+  );
+  const isRef = comparison.data?.reference?.evidence_ref === evidenceRef;
 
   return (
     <>
@@ -105,6 +114,60 @@ function NeuralBody({ evidenceRef }: { evidenceRef: string }) {
           />
         ) : (
           <>
+            {/* Authentic Reference Corroboration Panel */}
+            {comparison.data?.has_reference && comparison.data.reference && (
+              <div className="mb-4 rounded-xl border border-accent/25 bg-surface p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-lineSoft pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Scale size={15} className="text-accent" />
+                    <span className="text-[12px] font-bold text-ink">
+                      Comparative Ground Truth Corroboration
+                    </span>
+                    {isRef ? (
+                      <Chip tone="ok" className="text-[10px]">CURRENT ITEM IS CAMERA REFERENCE</Chip>
+                    ) : (
+                      <Chip tone="amber" className="text-[10px]">EVALUATED AGAINST CASE REFERENCE</Chip>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-muted">
+                    Reference: <span className="font-mono font-semibold text-accent">{comparison.data.reference.evidence_ref}</span> ({comparison.data.reference.filename})
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-[11.5px]">
+                  <div className="rounded border border-line bg-s2/40 p-2.5">
+                    <span className="block text-[10px] uppercase font-semibold text-muted">Authentic Reference Signal</span>
+                    <div className="font-mono font-bold text-[15px] text-ink mt-0.5">
+                      {activeComp?.ai_signal.reference_score != null ? `${activeComp.ai_signal.reference_score}%` : isRef ? `${((d.aggregate?.median_score ?? 0) * 100).toFixed(1)}%` : "Baseline intact"}
+                    </div>
+                    <span className="text-[10px] text-muted block mt-0.5">Physical camera sensor baseline</span>
+                  </div>
+
+                  <div className="rounded border border-line bg-s2/40 p-2.5">
+                    <span className="block text-[10px] uppercase font-semibold text-muted">Current Item Signal</span>
+                    <div className="font-mono font-bold text-[15px] text-amber mt-0.5">
+                      {d.aggregate?.median_score != null ? `${(d.aggregate.median_score * 100).toFixed(1)}%` : "—"}
+                    </div>
+                    <span className="text-[10px] text-muted block mt-0.5">{isRef ? "Reference baseline" : "Derivative under examination"}</span>
+                  </div>
+
+                  <div className="rounded border border-line bg-s2/40 p-2.5">
+                    <span className="block text-[10px] uppercase font-semibold text-muted">Pairwise Signal Delta</span>
+                    <div className="font-mono font-bold text-[15px] text-accent mt-0.5">
+                      {activeComp?.ai_signal.delta != null ? `${activeComp.ai_signal.delta > 0 ? "+" : ""}${fmtNum(activeComp.ai_signal.delta)}%` : isRef ? "0.0% (Baseline)" : "—"}
+                    </div>
+                    <span className="text-[10px] text-muted block mt-0.5">
+                      {activeComp?.visual.ssim ? `Corroborated: SSIM ${activeComp.visual.ssim}` : "Decision-support delta"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-2.5 text-[10.5px] text-muted italic">
+                  MODEL SIGNAL BOUNDARY: Swin-ViT model scores indicate pattern resemblance to synthetic datasets, NOT legal certainty. SROT enforces multi-signal corroboration before establishing forensic findings.
+                </div>
+              </div>
+            )}
+
             {/* Screenshot safety notice (when screenshot/recapture detected) */}
             {d.screenshot_caution && (
               <div className="mb-4">

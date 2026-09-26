@@ -1,6 +1,9 @@
 import { Async, Chip, EmptyState, Field, Meter, Notice, PageHead, Panel, Table, Row, Cell } from "../components/ui";
 import { RequireEvidence } from "../components/guards";
+import { useSession } from "../state/session";
 import { useApi, fmtNum } from "../lib/api";
+import type { CaseComparisonPayload } from "../lib/api";
+import { Scale } from "lucide-react";
 
 type RecapturePayload = {
   likelihood: string; score: number | null;
@@ -17,11 +20,15 @@ const tone = (l: string) =>
   l === "HIGH" ? "danger" : l === "MEDIUM" ? "amber" : l === "LOW" ? "accent" : "muted";
 
 export default function Recapture() {
-  return <RequireEvidence>{(ev) => <Body evidenceRef={ev.evidence_ref} />}</RequireEvidence>;
+  return <RequireEvidence>{(ev) => <Body key={ev.evidence_ref} evidenceRef={ev.evidence_ref} />}</RequireEvidence>;
 }
 
 function Body({ evidenceRef }: { evidenceRef: string }) {
   const r = useApi<RecapturePayload>(`/evidence/${evidenceRef}/recapture`);
+  const { caseRef } = useSession();
+  const comparison = useApi<CaseComparisonPayload>(caseRef ? `/cases/${caseRef}/comparison` : null);
+
+  const isRef = comparison.data?.reference?.evidence_ref === evidenceRef;
 
   return (
     <>
@@ -32,6 +39,38 @@ function Body({ evidenceRef }: { evidenceRef: string }) {
              survives. SROT measures the geometry of that interface and reads whatever text is
              actually legible in it."
       />
+
+      <div className="mb-4">
+        <Notice kind="info">
+          <strong>FORENSIC SEPARATION OF QUESTIONS:</strong> Display recapture (recording a phone/monitor, status bar overlays, moiré fringes) and AI synthesis (diffusion rendering, generative inpainting) are completely separate forensic questions. A real camera photograph can be recaptured from a screen; an AI-synthesized image can be directly downloaded without any recapture traces.
+        </Notice>
+      </div>
+
+      {comparison.data?.has_reference && comparison.data.reference && (
+        <div className="mb-4 rounded-xl border border-accent/25 bg-surface p-3.5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-lineSoft pb-2">
+            <div className="flex items-center gap-2">
+              <Scale size={14} className="text-accent" />
+              <span className="text-[11.5px] font-bold text-ink">Comparative Recapture Baseline</span>
+            </div>
+            <span className="text-[11px] text-muted">
+              Reference: <span className="font-mono font-semibold text-accent">{comparison.data.reference.evidence_ref}</span> ({comparison.data.reference.filename})
+            </span>
+          </div>
+          <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+            <div className="rounded border border-line bg-s2/40 p-2">
+              <span className="text-muted block text-[10px] uppercase font-semibold">Camera Reference Baseline</span>
+              <span className="font-semibold text-ok">Direct Optical Sensor Capture</span>
+              <span className="text-muted block text-[10px] mt-0.5">Recapture score: ~0 / 100</span>
+            </div>
+            <div className="rounded border border-line bg-s2/40 p-2">
+              <span className="text-muted block text-[10px] uppercase font-semibold">Current Evidence Item</span>
+              <span className="font-semibold text-ink">{isRef ? "Authentic Camera Reference" : "Derivative under examination"}</span>
+              <span className="text-muted block text-[10px] mt-0.5">Evaluated for screen grid &amp; UI boundaries</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Async state={r} rows={5}
              empty={<EmptyState title="No recapture analysis for this evidence." />}>

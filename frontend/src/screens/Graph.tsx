@@ -26,7 +26,9 @@ type Payload = {
 
 const KIND: Record<string, { colour: string; label: string }> = {
   case:       { colour: "#8A94A8", label: "Case" },
+  reference:  { colour: "#55C98A", label: "Authentic Reference" },
   evidence:   { colour: "#9B7BFF", label: "Evidence" },
+  derivative: { colour: "#E05D6F", label: "Derivative Media" },
   hash:       { colour: "#6B7B99", label: "SHA-256 Digest" },
   analysis:   { colour: "#B9A3FF", label: "Analysis Run" },
   trace:      { colour: "#E5B85C", label: "Spatial Visual Trace" },
@@ -40,7 +42,7 @@ const KIND: Record<string, { colour: string; label: string }> = {
 };
 
 export default function GraphScreen() {
-  return <RequireEvidence>{(ev) => <Body evidenceRef={ev.evidence_ref} />}</RequireEvidence>;
+  return <RequireEvidence>{(ev) => <Body key={ev.evidence_ref} evidenceRef={ev.evidence_ref} />}</RequireEvidence>;
 }
 
 function Body({ evidenceRef }: { evidenceRef: string }) {

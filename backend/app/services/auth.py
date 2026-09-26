@@ -56,9 +56,22 @@ def hash_token(raw_token: str) -> str:
 
 def seed_demo_officer(db: Session) -> OfficerUser:
     """Seed the default demo officer account if not already present."""
-    badge_id = os.environ.get("DEMO_OFFICER_BADGE", "DEMO-OFFICER").strip()
-    password = os.environ.get("DEMO_OFFICER_PASSWORD", "SROT@Police2026#Demo").strip()
-    name = os.environ.get("DEMO_OFFICER_NAME", "Demo Officer").strip()
+    is_prod = os.environ.get("ENVIRONMENT", "").strip().lower() == "production"
+    badge_id = os.environ.get("DEMO_OFFICER_BADGE", "").strip()
+    password = os.environ.get("DEMO_OFFICER_PASSWORD", "").strip()
+
+    if is_prod:
+        if not badge_id or not password:
+            raise RuntimeError(
+                "CRITICAL SECURITY CONFIGURATION ERROR: When ENVIRONMENT=production, "
+                "both DEMO_OFFICER_BADGE and DEMO_OFFICER_PASSWORD environment variables MUST be provided. "
+                "Refusing to start in production with fallback demo credentials."
+            )
+    else:
+        badge_id = badge_id or "DEMO-OFFICER"
+        password = password or "SROT@Police2026#Demo"
+
+    name = os.environ.get("DEMO_OFFICER_NAME", "Duty Officer" if is_prod else "Demo Officer").strip()
     role = os.environ.get("DEMO_OFFICER_ROLE", "Senior Forensic Investigator").strip()
     unit = os.environ.get("DEMO_OFFICER_UNIT", "Digital Forensics Unit").strip()
 
@@ -95,17 +108,23 @@ def verify_officer_login(db: Session, badge_id: str, password: str) -> Optional[
     badge_clean = badge_id.strip()
     officer = db.query(OfficerUser).filter(OfficerUser.badge_id == badge_clean, OfficerUser.is_active == True).first()
 
-    demo_badge = os.environ.get("DEMO_OFFICER_BADGE", "DEMO-OFFICER").strip()
-    if badge_clean == demo_badge:
+    is_prod = os.environ.get("ENVIRONMENT", "").strip().lower() == "production"
+    demo_badge = os.environ.get("DEMO_OFFICER_BADGE", "" if is_prod else "DEMO-OFFICER").strip()
+
+    if badge_clean == demo_badge and demo_badge:
         if officer and verify_password(password, officer.password_hash):
             return officer
 
         env_pwd = os.environ.get("DEMO_OFFICER_PASSWORD", "").strip().strip('"').strip("'")
-        accepted_demo_passwords = [
-            env_pwd,
-            "SROT@Police2026#Demo",
-            "Forensic#2026!SecOps",
-        ]
+        if is_prod:
+            # In production, ONLY the exact configured DEMO_OFFICER_PASSWORD is accepted. No fallback!
+            accepted_demo_passwords = [env_pwd] if env_pwd else []
+        else:
+            accepted_demo_passwords = [
+                env_pwd,
+                "SROT@Police2026#Demo",
+                "Forensic#2026!SecOps",
+            ]
         accepted_demo_passwords = [p for p in accepted_demo_passwords if p]
 
         for valid_p in accepted_demo_passwords:

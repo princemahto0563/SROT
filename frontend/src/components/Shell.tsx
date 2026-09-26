@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import {
   LayoutDashboard, Upload, ScanSearch, GitBranch, ScanFace, Type, Share2,
   Layers, Activity, Clock, ShieldCheck, FileText, Circle, WifiOff, Cpu,
-  FolderPlus, Plus, BarChart3, LogOut, Sun, Moon, Database, ChevronRight, FileDigit
+  FolderPlus, Plus, BarChart3, LogOut, Sun, Moon, Database, ChevronRight, FileDigit,
+  GitCompare
 } from "lucide-react";
 import { useSession } from "../state/session";
 import { useAuth } from "../state/auth";
@@ -20,9 +21,10 @@ const NAV_GROUPS = [
     ],
   },
   {
-    group: "EVIDENCE & INTAKE",
+    group: "EVIDENCE & COMPARISON",
     items: [
       { to: "/upload", label: "Evidence Intake", Icon: Upload },
+      { to: "/compare", label: "Forensic Comparison", Icon: GitCompare },
     ],
   },
   {

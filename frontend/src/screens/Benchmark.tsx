@@ -110,6 +110,12 @@ export default function Benchmark() {
 
       <div className="mb-4">
         <Notice kind="info">
+          <strong>INTERNAL VALIDATION BENCHMARK vs CASE-SPECIFIC FORENSIC COMPARISON:</strong> This benchmark measures the technical accuracy and failure boundaries of SROT's detection models across a fixed 27-sample calibration corpus. For pairwise evaluation between an authenticated case reference and case derivatives, open the <a href="#/compare" className="text-accent underline font-semibold">Forensic Comparison Workstation</a>.
+        </Notice>
+      </div>
+
+      <div className="mb-4">
+        <Notice kind="info">
           <b>Internal validation results on the current benchmark. These metrics are not universal real-world accuracy.</b> This dataset is a curated technical test bench designed to measure signal behavior, failure boundaries, and cross-signal safeguards. It is not a statistical field population and does not claim uniform general-population accuracy.
         </Notice>
       </div>

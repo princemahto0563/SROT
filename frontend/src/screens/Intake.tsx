@@ -27,22 +27,41 @@ export default function Intake() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
 
-  const watched = justUploaded?.evidence_ref ?? current?.evidence_ref ?? null;
+  // Clear justUploaded whenever active evidence changes to another item
+  useEffect(() => {
+    if (justUploaded && current && current.evidence_ref !== justUploaded.evidence_ref) {
+      setJustUploaded(null);
+    }
+  }, [current?.evidence_ref, justUploaded]);
+
+  const watched = current?.evidence_ref ?? justUploaded?.evidence_ref ?? null;
+  const isWatchedPending =
+    justUploaded != null ||
+    current?.latest_run?.status === "queued" ||
+    current?.latest_run?.status === "running";
+
   const job = usePolling<{ status: string; stage: string | null; stages: Record<string, string>;
                            error?: string | null; assessment?: string | null }>(
-    watched ? `/evidence/${watched}/job` : null,
+    watched && isWatchedPending ? `/evidence/${watched}/job` : null,
     (d) => d.status === "queued" || d.status === "running",
     1200,
   );
 
-  // When job reaches terminal status, trigger session refresh
+  // When job reaches terminal status from a pending run, trigger session refresh
+  const prevJobStatus = useRef<string | null>(null);
   useEffect(() => {
-    if (job.data?.status === "completed" || job.data?.status === "failed") {
+    const s = job.data?.status;
+    if (
+      prevJobStatus.current &&
+      (prevJobStatus.current === "queued" || prevJobStatus.current === "running") &&
+      (s === "completed" || s === "failed")
+    ) {
       refresh();
-      if (job.data?.status === "completed") {
+      if (s === "completed") {
         setJustUploaded(null);
       }
     }
+    prevJobStatus.current = s ?? null;
   }, [job.data?.status, refresh]);
 
   const send = useCallback(async (file: File) => {
@@ -73,7 +92,7 @@ export default function Intake() {
     }
   }, [caseRef, targetMode, createNewCase, refresh, setEvidenceRef]);
 
-  const shown = (current && current.evidence_ref === watched) ? current : (justUploaded ?? current);
+  const shown = current ?? justUploaded;
   const stages = job.data?.stages ?? {};
   const stageKeys = Object.keys(stages);
   const done = stageKeys.filter((k) => stages[k] === "completed").length;
@@ -217,7 +236,7 @@ export default function Intake() {
         </Notice>
       </div>
 
-      {shown && <EvidenceViewer evidence={shown} run={job.data as RunSummary | null} />}
+      {shown && <EvidenceViewer key={shown.evidence_ref} evidence={shown} run={job.data as RunSummary | null} />}
     </>
   );
 }
@@ -225,7 +244,7 @@ export default function Intake() {
 function EvidenceViewer({ evidence, run }: { evidence: Evidence; run: RunSummary | null }) {
   // Live dynamic query for latest evidence probe data
   const live = useApi<Evidence>(`/evidence/${evidence.evidence_ref}`, [run?.status, run?.stage]);
-  const ev = live.data ?? evidence;
+  const ev = (live.data && live.data.evidence_ref === evidence.evidence_ref) ? live.data : evidence;
   const ready = run?.status === "completed" || ev.latest_run?.status === "completed";
   return (
     <div className="mt-4">
