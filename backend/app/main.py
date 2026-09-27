@@ -376,6 +376,14 @@ def get_case_comparison(case_ref: str, db: Session = Depends(get_db)):
     comparisons = []
     for dev in media_evs:
         comp = comp_svc.compare_evidence(db, case.id, ref.id, dev.id)
+        if isinstance(comp, str):
+            import json
+            try:
+                comp = json.loads(comp)
+            except Exception:
+                comp = {}
+        elif not isinstance(comp, dict):
+            comp = {}
         comparisons.append({
             **comp,
             "derivative": _evidence_json(db, dev),

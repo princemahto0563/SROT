@@ -214,7 +214,14 @@ def compare_evidence(
             .first()
         )
         if cached and cached.details_json:
-            return cached.details_json
+            if isinstance(cached.details_json, str):
+                import json
+                try:
+                    return json.loads(cached.details_json)
+                except Exception:
+                    pass
+            elif isinstance(cached.details_json, dict):
+                return cached.details_json
 
     ref_p = get_evidence_path(ref_evidence)
     der_p = get_evidence_path(deriv_evidence)

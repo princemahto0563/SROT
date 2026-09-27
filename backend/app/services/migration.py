@@ -152,8 +152,14 @@ def model_from_dict(model_cls: Any, data_dict: Dict[str, Any], **overrides: Any)
     for k, v in merged.items():
         if k in col_map and k != "id":
             col = col_map[k]
+            type_str = str(col.type).upper()
             if isinstance(col.type, (sa.DateTime, sa.Date)) and isinstance(v, str):
                 v = parse_dt(v)
+            elif "JSON" in type_str and isinstance(v, str):
+                try:
+                    v = json.loads(v)
+                except Exception:
+                    pass
             filtered[k] = v
     return model_cls(**filtered)
 
