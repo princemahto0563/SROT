@@ -713,9 +713,16 @@ def generate_difference_heatmap(ref_path: str | Path, deriv_path: str | Path) ->
     if img_ref is None or img_der is None:
         return None, {"error": "Failed to decode reference or derivative image"}
 
-    # Match derivative dimensions for pixel inspection
+    # Cap maximum dimension to 1280px for memory safety on constrained cloud containers
+    max_dim = 1280
     h_der, w_der = img_der.shape[:2]
+    if max(h_der, w_der) > max_dim:
+        scale = max_dim / max(h_der, w_der)
+        w_der, h_der = int(w_der * scale), int(h_der * scale)
+        img_der = cv2.resize(img_der, (w_der, h_der), interpolation=cv2.INTER_AREA)
+
     ref_aligned = cv2.resize(img_ref, (w_der, h_der), interpolation=cv2.INTER_AREA)
+    del img_ref
 
     ref_gray = cv2.cvtColor(ref_aligned, cv2.COLOR_BGR2GRAY)
     der_gray = cv2.cvtColor(img_der, cv2.COLOR_BGR2GRAY)
