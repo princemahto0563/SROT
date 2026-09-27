@@ -461,13 +461,14 @@ def import_case_bundle(db: Session, bundle: Dict[str, Any], zip_bytes: bytes) ->
 
         # Fingerprint Ledger
         for fp in bundle.get("fingerprint_ledger", []):
+            phash = fp.get("perceptual_hash") or fp.get("phash_hex")
             exists = db.query(FingerprintLedger).filter(
                 FingerprintLedger.case_ref == fp.get("case_ref"),
                 FingerprintLedger.evidence_ref == fp.get("evidence_ref"),
-                FingerprintLedger.media_sha256 == fp.get("media_sha256")
+                FingerprintLedger.perceptual_hash == phash
             ).first()
             if not exists:
-                db.add(model_from_dict(FingerprintLedger, fp))
+                db.add(model_from_dict(FingerprintLedger, fp, perceptual_hash=phash))
 
         db.commit()
 
