@@ -41,6 +41,45 @@ class Base(DeclarativeBase):
     pass
 
 
+def resolve_data_path(raw: str | Path | None) -> Path:
+    """
+    Canonical data path resolver for all SROT assets (evidence, work, corpus, packets).
+    Handles relative SROT_DATA paths, legacy absolute paths from other machines/Docker/macOS,
+    and safely re-roots them to the active BASE_DIR. Enforces path traversal protection.
+    """
+    active_base = Path(os.environ.get("SROT_DATA", BASE_DIR))
+    if not raw:
+        return active_base / "evidence" / "nonexistent"
+
+    p = Path(raw)
+
+    # 1. Existing absolute path (legacy compatibility when file is present on disk)
+    if p.is_absolute() and p.exists():
+        return p
+
+    raw_str = str(raw)
+    raw_normalized = raw_str.replace("\\", "/")
+    base_resolved = active_base.resolve()
+
+    # 2. Look for known SROT data subdirectories and re-root
+    for folder in ("evidence/", "work/", "corpus/", "packets/"):
+        if folder in raw_normalized:
+            rel_sub = raw_normalized[raw_normalized.index(folder):]
+            candidate = (active_base / rel_sub).resolve()
+            if not str(candidate).startswith(str(base_resolved)):
+                raise ValueError(f"Path traversal detected: {raw}")
+            return candidate
+
+    # 3. Relative path under active DATA_DIR
+    clean_rel = raw_normalized.lstrip("/\\")
+    if p.is_absolute():
+        clean_rel = p.name
+    candidate = (active_base / clean_rel).resolve()
+    if not str(candidate).startswith(str(base_resolved)):
+        raise ValueError(f"Path traversal detected: {raw}")
+    return candidate
+
+
 def get_evidence_path(ev: Any) -> Path:
     """
     Canonical evidence path resolver.
@@ -55,33 +94,7 @@ def get_evidence_path(ev: Any) -> Path:
     else:
         raise TypeError(f"Expected Evidence, str, or Path, got {type(ev)}")
 
-    if not raw:
-        active_base = Path(os.environ.get("SROT_DATA", BASE_DIR))
-        return active_base / "evidence" / "nonexistent"
-
-    p = Path(raw)
-
-    # 1. Existing absolute path (legacy compatibility when file is present on disk)
-    if p.is_absolute() and p.exists():
-        return p
-
-    # 2. Re-root absolute path that does not exist on disk to active DATA_DIR
-    active_base = Path(os.environ.get("SROT_DATA", BASE_DIR))
-    raw_normalized = raw.replace("\\", "/")
-    base_resolved = active_base.resolve()
-
-    if "evidence/" in raw_normalized:
-        rel_sub = raw_normalized[raw_normalized.index("evidence/"):]
-        candidate = (active_base / rel_sub).resolve()
-        if not str(candidate).startswith(str(base_resolved)):
-            raise ValueError(f"Path traversal detected: {raw}")
-        return candidate
-
-    # 3. Relative path under active DATA_DIR
-    candidate = (active_base / raw.lstrip("/\\")).resolve()
-    if not str(candidate).startswith(str(base_resolved)):
-        raise ValueError(f"Path traversal detected: {raw}")
-    return candidate
+    return resolve_data_path(raw)
 
 
 def get_db():

@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from sqlalchemy.orm import Session
 
-from .db import init_db, get_db, EVIDENCE_DIR, WORK_DIR, PACKET_DIR, get_evidence_path
+from .db import init_db, get_db, EVIDENCE_DIR, WORK_DIR, PACKET_DIR, get_evidence_path, resolve_data_path
 from .models import (
     Case, Evidence, AnalysisRun, Signal, FrameAnalysis, OriginMatch, CorpusItem,
     ExtractedEntity, RecaptureResult, StressTestRun, StressVariant, CampaignMatch,
@@ -465,18 +465,7 @@ def set_case_reference(case_ref: str, payload: dict, db: Session = Depends(get_d
         db.commit()
         db.refresh(target_run)
 
-    for ev in all_evs:
-        ev_run = (
-            db.query(AnalysisRun)
-            .filter(AnalysisRun.evidence_id == ev.id)
-            .order_by(AnalysisRun.id.desc())
-            .first()
-            or target_run
-        )
-        casebuild.rebuild_graph(db, case, ev, ev_run)
-
-    casebuild.rebuild_timeline(db, case, target, target_run)
-    casebuild.rebuild_leads(db, case, target, target_run)
+    casebuild.rebuild_case_views(db, case)
 
     audit_svc.record(db, case_id=case.id, action="Authentic reference designated",
                      component="comparison engine", evidence_ref=target.evidence_ref,
@@ -689,14 +678,16 @@ def frame_image(evidence_ref: str, idx: int, db: Session = Depends(get_db)):
     ev, run = _require_run(db, evidence_ref)
     row = (db.query(FrameAnalysis)
            .filter(FrameAnalysis.run_id == run.id, FrameAnalysis.frame_index == idx).first())
-    if not row or not row.path or not Path(row.path).exists():
+    p_frame = resolve_data_path(row.path) if (row and row.path) else None
+    if not p_frame or not p_frame.exists():
         row = (db.query(FrameAnalysis)
                .filter(FrameAnalysis.run_id == run.id)
                .order_by(FrameAnalysis.frame_index.asc()).first())
-    if not row or not row.path or not Path(row.path).exists():
+        p_frame = resolve_data_path(row.path) if (row and row.path) else None
+    if not p_frame or not p_frame.exists():
         raise HTTPException(404, "frame not available")
-    media_type = mimetypes.guess_type(row.path)[0] or "image/jpeg"
-    return FileResponse(row.path, media_type=media_type)
+    media_type = mimetypes.guess_type(str(p_frame))[0] or "image/jpeg"
+    return FileResponse(p_frame, media_type=media_type)
 
 
 @app.get("/api/evidence/{evidence_ref}/media")
@@ -900,13 +891,15 @@ def get_trace_image(evidence_ref: str, trace_type: str, frame_idx: int = 0, db: 
 
     row = (db.query(FrameAnalysis)
            .filter(FrameAnalysis.run_id == run.id, FrameAnalysis.frame_index == frame_idx).first())
-    if not row or not row.path or not Path(row.path).exists():
+    p_frame = resolve_data_path(row.path) if (row and row.path) else None
+    if not p_frame or not p_frame.exists():
         row = (db.query(FrameAnalysis)
                .filter(FrameAnalysis.run_id == run.id).first())
-    if not row or not row.path or not Path(row.path).exists():
+        p_frame = resolve_data_path(row.path) if (row and row.path) else None
+    if not p_frame or not p_frame.exists():
         raise HTTPException(404, "no frame image available for visual trace")
 
-    png_bytes, meta = trace_svc.generate_trace(row.path, trace_type)
+    png_bytes, meta = trace_svc.generate_trace(str(p_frame), trace_type)
     if not png_bytes:
         raise HTTPException(400, meta.get("error", "failed to generate visual trace"))
     return Response(content=png_bytes, media_type="image/png")

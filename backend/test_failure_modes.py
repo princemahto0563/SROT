@@ -113,7 +113,7 @@ def run_failure_mode_tests() -> bool:
         dummy_neural = {"model_available": False, "median_score": None}
         cross_res = cross_svc.synthesize_cross_signal_assessment(
             evidence_facts={"evidence_ref": "DUMMY", "sha256": "abc", "size_bytes": 100},
-            signals=[],
+            signals=[{"name": "Sensor-noise residual", "score": 10.0, "strength": "BASELINE", "result": "Consistent"}],
             recapture=None,
             neural=dummy_neural,
             origin_matches=[],

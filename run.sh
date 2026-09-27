@@ -188,6 +188,7 @@ cleanup() {
 seed_data() {
   step "Demonstration data (SYNTHETIC)"
   ( cd "$ROOT/backend" && "$PY" seed.py $RESET ) || die "seeding failed"
+  ( cd "$ROOT/backend" && "$PY" seed_demo_case.py ) || die "demo case verification failed"
 }
 
 start_backend() {

@@ -827,7 +827,7 @@ detector is bundled. No audio score is reported.
 
 {% if comparison %}
 <h2>16. AUTHENTIC REFERENCE VS DERIVATIVE COMPARISON</h2>
-<p class="small"><b>Case Reference:</b> {{ authentic_reference.evidence_ref }} ({{ authentic_reference.filename }}) · <b>Role:</b> AUTHENTIC REFERENCE — DEMO GROUND TRUTH{% if authentic_reference.exif_json and (authentic_reference.exif_json.get('Make') or authentic_reference.exif_json.get('Model')) %} · <b>Camera Source:</b> {{ authentic_reference.exif_json.get('Make') }} {{ authentic_reference.exif_json.get('Model') }}{% endif %}</p>
+<p class="small"><b>Case Reference:</b> {{ authentic_reference.evidence_ref }} ({{ authentic_reference.filename }}) · <b>Role:</b> AUTHENTIC REFERENCE BASELINE{% if authentic_reference.exif_json and (authentic_reference.exif_json.get('Make') or authentic_reference.exif_json.get('Model')) %} · <b>Camera Source:</b> {{ authentic_reference.exif_json.get('Make') }} {{ authentic_reference.exif_json.get('Model') }}{% endif %}</p>
 <table>
 <tr><th>Forensic Signal</th><th>Authentic Reference</th><th>Current Derivative</th><th>Measured Difference</th><th>Evidentiary Basis</th></tr>
 {% for m in comparison.chart_metrics %}

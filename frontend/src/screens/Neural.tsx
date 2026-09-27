@@ -121,7 +121,7 @@ function NeuralBody({ evidenceRef }: { evidenceRef: string }) {
                   <div className="flex items-center gap-2">
                     <Scale size={15} className="text-accent" />
                     <span className="text-[12px] font-bold text-ink">
-                      Comparative Ground Truth Corroboration
+                      Comparative Reference Baseline Corroboration
                     </span>
                     {isRef ? (
                       <Chip tone="ok" className="text-[10px]">CURRENT ITEM IS CAMERA REFERENCE</Chip>

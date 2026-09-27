@@ -146,7 +146,7 @@ def build_evidence_matrix(
         bands = (recapture.get("static_bands") or {}).get("detected", False)
         handles = recapture.get("recovered_handles", [])
         score_str = f" ({re_score:.1f}%)" if re_score is not None else ""
-        obs = f"Recapture likelihood: {re_lik}{score_str}."
+        obs = f"Recapture indication: {re_lik}{score_str}."
         if bands:
             obs += " Static interface rows detected (screen-recording signature)."
         if handles:

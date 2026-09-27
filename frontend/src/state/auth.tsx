@@ -92,6 +92,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthToken(res.token);
       setToken(res.token);
       setOfficer(res.officer);
+      try {
+        localStorage.setItem("srot_case_ref", "CASE-2026-112");
+      } catch {}
     } else {
       throw new Error("Invalid response received from authentication service.");
     }

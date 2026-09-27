@@ -34,7 +34,7 @@ export default function Comparison() {
   return (
     <>
       <PageHead
-        eyebrow="Comparative Forensics · Ground Truth Baseline"
+        eyebrow="Comparative Forensics · Authentic Reference Baseline"
         title="AUTHENTIC REFERENCE VS DERIVATIVE COMPARISON"
         sub="Rigorous pairwise evaluation between authenticated camera reference and manipulated derivatives. All signals, deltas, and difference heatmaps are computed deterministically from raw file bytes."
         right={
@@ -57,7 +57,7 @@ export default function Comparison() {
             return (
               <EmptyState
                 title="No authentic reference established for this case."
-                detail="A reference baseline provides camera ground truth against which derivative files are compared. Upload or designate an authentic camera capture."
+                detail="An authentic reference baseline provides an authenticated benchmark against which derivative files are compared. Upload or designate an authentic camera capture."
                 action={
                   detail?.evidence && detail.evidence.length > 0 ? (
                     <div className="flex flex-wrap gap-2 mt-2">
@@ -102,7 +102,7 @@ export default function Comparison() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10.5px] font-bold uppercase tracking-wider text-accent">
-                        Ground Truth Baseline
+                        Authentic Reference Baseline
                       </span>
                       <Chip tone="ok">AUTHENTIC CAMERA REFERENCE</Chip>
                       <Chip tone="muted">{ref.evidence_ref}</Chip>
@@ -112,7 +112,7 @@ export default function Comparison() {
                     </h2>
                     <p className="mt-1 text-[12px] text-ink2 max-w-[85ch]">
                       {ref.classification_basis ||
-                        "Authentic camera reference baseline in case custody. Serves as ground truth for scene geometry, sensor noise, and text elements."}
+                        "Authentic camera reference baseline in case custody. Serves as authenticated reference baseline used for comparative analysis of scene geometry, sensor noise, and text elements."}
                     </p>
                   </div>
 

@@ -26,7 +26,7 @@ import numpy as np
 from PIL import Image
 from sqlalchemy.orm import Session
 
-from ..db import get_evidence_path
+from ..db import get_evidence_path, resolve_data_path
 from ..models import (
     Case, Evidence, AnalysisRun, Signal, ExtractedEntity, RecaptureResult,
     NeuralFrameResult, ForensicComparison, utcnow,
@@ -78,9 +78,9 @@ def classify_demo_case_evidence(db: Session, case_id: int) -> list[Evidence]:
         ref_item.forensic_role = "AUTHENTIC_REFERENCE"
         ref_item.reference_evidence_id = None
         ref_item.classification_basis = (
-            "Demo ground truth reference: Original unmanipulated camera capture "
+            "Authenticated reference baseline: Original camera capture "
             "(Motorola Edge, 4096x3072, SIH event banner, camera EXIF preserved, "
-            "no cancer/donation manipulation)"
+            "used for comparative analysis)"
         )
         db.add(ref_item)
 
@@ -94,34 +94,34 @@ def classify_demo_case_evidence(db: Session, case_id: int) -> list[Evidence]:
             if "gemini" in fn:
                 e.forensic_role = "AI_GENERATED"
                 e.classification_basis = (
-                    "Demo ground truth: AI-generated/modified derivative with altered facial "
+                    "Demonstration derivative: AI-generated/modified derivative with altered facial "
                     "presentation and donation claims"
                 )
             elif "image.png" in fn or sha == "c6292491165a5b7722038e8cf0b375be1430840bd2926c2b58f93a713ab7a69e":
                 e.forensic_role = "AI_MODIFIED"
                 e.classification_basis = (
-                    "Demo ground truth: Materially modified poster derivative containing cancer donation "
+                    "Demonstration derivative: Materially modified poster derivative containing cancer donation "
                     "graphics, QR code, and UPI payment identifier (princemahto@ibl)"
                 )
             elif "webp" in fn or "snapchat" in fn:
                 e.forensic_role = "RECAPTURED_COPY"
                 e.classification_basis = (
-                    "Demo ground truth: Reposted/social-media derivative (compressed re-encode)"
+                    "Demonstration derivative: Reposted/social-media derivative (compressed re-encode)"
                 )
             elif "photo" in fn:
                 e.forensic_role = "AI_MODIFIED"
                 e.classification_basis = (
-                    "Demo ground truth: Modified portrait derivative with altered presentation"
+                    "Demonstration derivative: Modified portrait derivative with altered presentation"
                 )
             elif DEMO_AUTHENTIC_FILENAME_SUBSTR in (e.filename or "") or sha == DEMO_AUTHENTIC_SHA256:
                 e.forensic_role = "AUTHENTIC_REFERENCE"
                 e.classification_basis = (
-                    "Demo ground truth: Verified copy of the authentic camera reference"
+                    "Demonstration baseline: Verified copy of authentic camera reference baseline"
                 )
             else:
                 e.forensic_role = "AI_OR_MODIFIED_DERIVATIVE"
                 e.classification_basis = (
-                    "Demo ground truth: Case-local derivative visually related to authentic reference"
+                    "Demonstration derivative: Case-local derivative visually related to authentic reference baseline"
                 )
             db.add(e)
 
@@ -550,7 +550,7 @@ def compare_evidence(
         "SROT does NOT infer common criminal authorship or account ownership without independent evidence.",
         "Model signal is an uncalibrated decision-support metric, not a mathematical probability of fabrication.",
         "Origin is established relative to the local SROT evidence corpus, not universal internet indexing.",
-        "Physical camera capture reference is established as demo ground truth for this evaluation case.",
+        "Physical camera capture reference is established as authentic reference baseline for this evaluation case.",
     ]
 
     why_srot_reached_result = [
@@ -701,8 +701,8 @@ def generate_difference_heatmap(ref_path: str | Path, deriv_path: str | Path) ->
     between the authentic reference and derivative image.
     Blends 35% derivative with 65% Magma colormap heatmap.
     """
-    p_ref = Path(ref_path)
-    p_der = Path(deriv_path)
+    p_ref = resolve_data_path(ref_path)
+    p_der = resolve_data_path(deriv_path)
 
     if not p_ref.exists() or not p_der.exists():
         return None, {"error": "Reference or derivative file not found"}

@@ -207,7 +207,7 @@ def validate_c2pa(media_path_or_bytes: str | Path | bytes) -> dict[str, Any]:
                     "anchors_loaded": len(OFFLINE_TRUST_ANCHORS),
                     "store_hash": TRUST_STORE_HASH,
                 },
-                "forensic_boundary": "Provenance established under legacy ITL specification. Verifies editorial custody, not physical scene ground truth.",
+                "forensic_boundary": "Provenance established under legacy ITL specification. Verifies editorial custody, not physical scene authentic baseline.",
             }
 
         if not cert_match:

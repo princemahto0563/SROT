@@ -31,9 +31,11 @@ const SessionCtx = createContext<Ctx | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [caseRef, setCaseRefState] = useState<string | null>(() => {
     try {
-      return localStorage.getItem("srot_case_ref") || null;
+      const saved = localStorage.getItem("srot_case_ref");
+      if (saved && saved !== "CASE-2026-001") return saved;
+      return "CASE-2026-112";
     } catch {
-      return null;
+      return "CASE-2026-112";
     }
   });
   const [evidenceRef, setEvidenceRef] = useState<string | null>(null);
