@@ -32,6 +32,7 @@ from .services import replay as replay_svc
 from .services import audio_forensics as audio_svc
 from .services import c2pa_trust as c2pa_svc
 from .services import auth as auth_svc
+from .services import migration as migration_svc
 from .services.auth import extract_token, validate_session_token, revoke_session_token
 from . import pipeline
 
@@ -1695,3 +1696,54 @@ def delete_evidence(case_ref: str, evidence_ref: str, db: Session = Depends(get_
                               "graph": rebuilt.get("graph")})
     return {"removed": evidence_ref, "rebuild": rebuilt,
             "graph": casebuild.graph_payload(db, case)["stats"]}
+
+
+# ── admin & migration ─────────────────────────────────────────────────────────
+@app.get("/api/admin/system-status")
+def admin_system_status(db: Session = Depends(get_db)):
+    """Get persistent storage and database status. Requires police auth."""
+    return migration_svc.get_system_status(db)
+
+
+@app.post("/api/admin/backup-db")
+def admin_backup_db(db: Session = Depends(get_db)):
+    """Create timestamped database backup. Requires police auth."""
+    return migration_svc.create_db_backup()
+
+
+@app.post("/api/admin/import-case")
+async def admin_import_case(
+    bundle: str = Form(...),
+    media: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Import a packaged case bundle and its media files.
+    Performs automatic pre-backup, SHA-256 verification, and relational preservation.
+    Requires police auth.
+    """
+    import json
+    try:
+        bundle_data = json.loads(bundle)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON in bundle: {e}")
+    
+    zip_bytes = await media.read()
+    return migration_svc.import_case_bundle(db, bundle_data, zip_bytes)
+
+
+@app.post("/api/auth/rotate-password")
+def rotate_password(payload: dict, request: Request, db: Session = Depends(get_db)):
+    """Rotate the current authenticated officer's password."""
+    new_password = (payload.get("new_password") or "").strip()
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
+    
+    officer = getattr(request.state, "officer", None)
+    if not officer:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    officer.password_hash = auth_svc.hash_password(new_password)
+    db.commit()
+    return {"status": "ok", "message": "Officer credentials successfully rotated."}
+
