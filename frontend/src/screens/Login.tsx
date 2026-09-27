@@ -40,6 +40,9 @@ export default function Login() {
 
   const fillDemoCredentials = () => {
     setBadgeId("DEMO-OFFICER");
+    if (!password) {
+      setPassword("SROT@Police2026#Demo");
+    }
     setError(null);
   };
 
@@ -181,7 +184,7 @@ export default function Login() {
                 onClick={fillDemoCredentials}
                 className="flex items-center gap-1 rounded border border-line bg-s2 px-2 py-0.5 text-[10.5px] font-medium text-accent hover:border-accent hover:bg-s3 transition"
               >
-                <CheckCircle2 size={11} /> Fill Demo Badge
+                <CheckCircle2 size={11} /> Fill Demo Credentials
               </button>
             </div>
             <div className="mt-2 rounded bg-s2/70 p-2 font-mono text-[10.5px] text-ink2">
@@ -190,8 +193,8 @@ export default function Login() {
                 <span className="font-semibold text-ink">DEMO-OFFICER</span>
               </div>
               <div className="mt-1 flex justify-between text-muted">
-                <span>Password:</span>
-                <span className="italic">Configured via environment</span>
+                <span>Default Password:</span>
+                <span className="font-mono text-ink">SROT@Police2026#Demo</span>
               </div>
             </div>
           </div>

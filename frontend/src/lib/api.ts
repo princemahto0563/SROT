@@ -6,11 +6,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const envApi = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
 
+export const isLocalEnvironment = (): boolean => {
+  if (typeof window === "undefined") return true;
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0";
+};
+
 // Normalize API base so that it ends with '/api' if pointing to backend root, or stays '/api' locally
 export const API = (() => {
-  if (!envApi) return "/api";
-  if (envApi.endsWith("/api")) return envApi;
-  return `${envApi}/api`;
+  if (envApi) {
+    if (envApi.endsWith("/api")) return envApi;
+    return `${envApi}/api`;
+  }
+  // When running on a hosted domain (e.g. Vercel) with no VITE_API_URL injected at build time,
+  // connect directly to the canonical Render production backend
+  if (!isLocalEnvironment()) {
+    return "https://srot-9ewc.onrender.com/api";
+  }
+  return "/api";
 })();
 
 const TOKEN_KEY = "srot_officer_token";
@@ -75,10 +88,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const targetPath = cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`;
     res = await fetch(`${API}${targetPath}`, reqInit);
   } catch {
-    throw new ApiError(
-      "Cannot reach the SROT backend. Start it with: uvicorn app.main:app --port 8077",
-      0,
-    );
+    const msg = isLocalEnvironment()
+      ? "Cannot reach the SROT backend. Start it with: uvicorn app.main:app --port 8077"
+      : "Cannot reach the SROT backend. If the free Render service was sleeping, it may take 30–50 seconds to wake. Please wait a moment and refresh.";
+    throw new ApiError(msg, 0);
   }
   if (!res.ok) {
     if (res.status === 401 && path !== "/auth/login") {

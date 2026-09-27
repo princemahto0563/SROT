@@ -4,7 +4,7 @@ import {
   Async, Chip, EmptyState, Field, Notice, PageHead, Panel, Stat, Table, Row, Cell,
 } from "../components/ui";
 import { useSession } from "../state/session";
-import { useApi, fmtBytes, fmtDate, fmtNum } from "../lib/api";
+import { useApi, fmtBytes, fmtDate, fmtNum, isLocalEnvironment } from "../lib/api";
 import type { CampaignPayload, Lead, CaseComparisonPayload } from "../lib/api";
 
 const bandTone = (b?: string | null) =>
@@ -46,8 +46,17 @@ export default function Dashboard() {
       {healthError && (
         <div className="mb-5">
           <Notice kind="warn">
-            The SROT backend is not reachable. Start it with{" "}
-            <code className="font-mono">uvicorn app.main:app --port 8077</code>, then refresh.
+            {isLocalEnvironment() ? (
+              <>
+                The SROT backend is not reachable. Start it with{" "}
+                <code className="font-mono">uvicorn app.main:app --port 8077</code>, then refresh.
+              </>
+            ) : (
+              <>
+                The SROT backend is currently unreachable ({healthError}). If the cloud service was sleeping,
+                Render free instances require 30–50 seconds to initialize. Please wait a moment and click Refresh.
+              </>
+            )}{" "}
             No screen in this console falls back to sample data.
           </Notice>
         </div>

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { EmptyState, Notice } from "./ui";
 import { useSession } from "../state/session";
-import { useApi, usePolling } from "../lib/api";
+import { useApi, usePolling, isLocalEnvironment } from "../lib/api";
 import type { Evidence, RunSummary } from "../lib/api";
 
 export type ReadinessStatus =
@@ -113,9 +113,17 @@ export function RequireEvidence({
   if (detailError) {
     return (
       <Notice kind="warn">
-        The backend could not be reached: {detailError}. Start it with{" "}
-        <code className="font-mono">uvicorn app.main:app --port 8077</code> from the{" "}
-        <code className="font-mono">backend/</code> directory.
+        The backend could not be reached ({detailError}).{" "}
+        {isLocalEnvironment() ? (
+          <>
+            Start it with <code className="font-mono">uvicorn app.main:app --port 8077</code> from the{" "}
+            <code className="font-mono">backend/</code> directory.
+          </>
+        ) : (
+          <>
+            If the cloud instance is waking from sleep, please allow 30–50 seconds and refresh.
+          </>
+        )}
       </Notice>
     );
   }

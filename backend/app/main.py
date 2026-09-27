@@ -42,7 +42,7 @@ def verify_officer_access(request: Request, db: Session = Depends(get_db)):
         return None
     path = request.url.path.rstrip("/")
     # Public endpoints
-    if path in {"/api/health", "/api/auth/login", "/api/auth/logout", "/docs", "/redoc", "/openapi.json"} or not path.startswith("/api"):
+    if path in {"", "/health", "/api/health", "/api/auth/login", "/api/auth/logout", "/docs", "/redoc", "/openapi.json"} or not path.startswith("/api"):
         return None
 
     token = extract_token(request)
@@ -68,29 +68,29 @@ app = FastAPI(
     version="2.0.0",
     dependencies=[Depends(verify_officer_access)],
 )
-is_prod = os.environ.get("ENVIRONMENT", "").strip().lower() == "production"
+
 cors_raw = os.environ.get("CORS_ORIGINS", "").strip()
 
-if is_prod:
-    # In production, ONLY explicit origins from CORS_ORIGINS are accepted; no wildcard or fallback regex
-    allowed_origins = [orig.strip() for orig in cors_raw.split(",") if orig.strip()]
-    allow_origin_regex = None
-else:
-    # Development mode supports localhost and any optional CORS_ORIGINS
-    dev_origins = {
-        "http://localhost:5177",
-        "http://127.0.0.1:5177",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    }
-    if cors_raw:
-        for orig in cors_raw.split(","):
-            if orig.strip():
-                dev_origins.add(orig.strip())
-    allowed_origins = list(dev_origins)
-    allow_origin_regex = r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$"
+# Canonical origins permitted to interact with SROT backend
+# Explicitly authorizes production Vercel frontend, preview deployments, and local dev
+base_origins = {
+    "https://srot-henna.vercel.app",
+    "https://srot-umt3.vercel.app",
+    "http://localhost:5177",
+    "http://127.0.0.1:5177",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+}
+if cors_raw:
+    for orig in cors_raw.split(","):
+        if orig.strip():
+            base_origins.add(orig.strip())
+
+allowed_origins = list(base_origins)
+# Regex allows all Vercel deployment URLs (*.vercel.app) and localhost ports securely
+allow_origin_regex = r"^(https://([a-zA-Z0-9_-]+\.)*vercel\.app|https?://(localhost|127\.0\.0\.1)(:[0-9]+)?)$"
 
 app.add_middleware(
     CORSMiddleware,
@@ -115,6 +115,27 @@ def _startup() -> None:
             neural_svc._ensure_loaded()
         except Exception:
             pass
+        # Auto-seed baseline demonstration case if database is newly initialized
+        if db.query(Case).count() == 0:
+            demo_case = Case(
+                case_ref="CASE-2026-001",
+                title="Suspicious investment inducement video",
+                category="Synthetic media / financial inducement",
+                officer="Investigating Officer (demo)",
+                unit="Digital Forensics Unit",
+                summary="A short video circulating on public channels promotes a guaranteed-return investment scheme. Submitted for authenticity assessment and source tracing. SYNTHETIC DEMONSTRATION CASE.",
+                status="active",
+            )
+            db.add(demo_case)
+            db.commit()
+            db.refresh(demo_case)
+            audit_svc.record(
+                db,
+                case_id=demo_case.id,
+                action="Case CASE-2026-001 initialized",
+                component="case manager",
+                payload={"auto_seeded": True},
+            )
     finally:
         db.close()
 
@@ -189,6 +210,25 @@ def get_session_info(request: Request, db: Session = Depends(get_db)):
 
 
 # ── system ───────────────────────────────────────────────────────────────────
+@app.get("/", tags=["System"])
+def root() -> dict[str, Any]:
+    """Root endpoint for service discovery and health monitoring."""
+    return {
+        "name": "SROT — Source Tracing & Recapture Origin Toolkit API",
+        "status": "ok",
+        "version": "2.0.0",
+        "health": "/health",
+        "api_health": "/api/health",
+        "docs": "/docs",
+    }
+
+
+@app.get("/health", tags=["System"])
+def health_simple() -> dict[str, str]:
+    """Lightweight root health endpoint for Render, load balancers, and external probes."""
+    return {"status": "ok"}
+
+
 @app.get("/api/health")
 def health(db: Session = Depends(get_db)) -> dict[str, Any]:
     import shutil as sh
@@ -222,15 +262,23 @@ def model_status() -> dict[str, Any]:
 
 
 @app.post("/api/system/seed")
-def trigger_seed(db: Session = Depends(get_db)) -> dict[str, Any]:
+def trigger_seed(background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict[str, Any]:
     """Seed demo corpus and demo cases if not already present."""
     cases_count = db.query(Case).count()
     if cases_count == 0:
-        try:
-            import sys, subprocess
-            subprocess.run([sys.executable, "backend/seed.py"], timeout=120)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Seeding failed: {e}")
+        import sys, subprocess
+        def _run_seed() -> None:
+            try:
+                subprocess.run([sys.executable, "backend/seed.py"], timeout=180)
+            except Exception:
+                pass
+        background_tasks.add_task(_run_seed)
+        return {
+            "status": "seeding_started",
+            "message": "Demo media synthesis running in background.",
+            "cases": cases_count,
+            "corpus_items": db.query(CorpusItem).count(),
+        }
     return {"status": "ok", "cases": db.query(Case).count(), "corpus_items": db.query(CorpusItem).count()}
 
 
