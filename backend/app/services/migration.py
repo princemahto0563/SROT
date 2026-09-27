@@ -442,13 +442,15 @@ def import_case_bundle(db: Session, bundle: Dict[str, Any], zip_bytes: bytes) ->
             new_eid = ev_id_map.get(ee["evidence_id"])
             if not new_eid:
                 continue
+            val = ee.get("value") or ee.get("entity_value")
+            etype = ee.get("entity_type")
             exists = db.query(ExtractedEntity).filter(
                 ExtractedEntity.evidence_id == new_eid,
-                ExtractedEntity.entity_type == ee.get("entity_type"),
-                ExtractedEntity.entity_value == ee.get("entity_value")
+                ExtractedEntity.entity_type == etype,
+                ExtractedEntity.value == val
             ).first()
             if not exists:
-                db.add(model_from_dict(ExtractedEntity, ee, evidence_id=new_eid))
+                db.add(model_from_dict(ExtractedEntity, ee, evidence_id=new_eid, value=val))
 
         # Graph Nodes & Edges
         for gn in bundle.get("graph_nodes", []):
