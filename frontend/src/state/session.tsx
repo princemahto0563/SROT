@@ -51,19 +51,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const cases = useApi<CaseSummary[]>("/cases", [tick]);
   const detail = useApi<CaseDetail>(caseRef ? `/cases/${caseRef}` : null, [tick]);
 
-  // pick the saved or first case as soon as one exists
+  // pick the saved or first case as soon as one exists (prefer CASE-2026-112 hero demo case)
   useEffect(() => {
     if (!cases.data?.length) return;
+    const hero = cases.data.find((c) => c.case_ref === "CASE-2026-112");
     if (!caseRef) {
       try {
         const saved = localStorage.getItem("srot_case_ref");
-        if (saved && cases.data.some((c) => c.case_ref === saved)) {
+        if (saved && saved !== "CASE-2026-001" && cases.data.some((c) => c.case_ref === saved)) {
           setCaseRef(saved);
           return;
         }
       } catch {}
+      if (hero) {
+        setCaseRef(hero.case_ref);
+        return;
+      }
       setCaseRef(cases.data[0].case_ref);
     } else if (!cases.data.some((c) => c.case_ref === caseRef)) {
+      if (hero) {
+        setCaseRef(hero.case_ref);
+        return;
+      }
       setCaseRef(cases.data[0].case_ref);
     }
   }, [cases.data, caseRef, setCaseRef]);
