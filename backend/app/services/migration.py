@@ -385,8 +385,9 @@ def import_case_bundle(db: Session, bundle: Dict[str, Any], zip_bytes: bytes) ->
             new_sid = stress_id_map.get(sv["stress_id"])
             if not new_sid:
                 continue
-            fname = Path(sv["path"]).name
-            new_path = str(WORK_DIR / "EV-CASE-2026-112-001" / "stress" / fname)
+            orig_p = Path(sv["path"])
+            folder = orig_p.parent.parent.name if orig_p.parent.name == "stress" else orig_p.parent.name
+            new_path = str(WORK_DIR / folder / "stress" / orig_p.name)
             exists = db.query(StressVariant).filter(
                 StressVariant.stress_id == new_sid,
                 StressVariant.name == sv["name"]
