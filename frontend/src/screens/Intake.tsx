@@ -11,6 +11,7 @@ import type { Evidence, RunSummary } from "../lib/api";
 const STAGE_LABEL: Record<string, string> = {
   INGEST: "Container & metadata",
   ANALYSIS: "Forensic signal ensemble",
+  NEURAL: "AI-synthetic signal (ViT)",
   TRACE: "Origin trace (corpus search)",
   OCR: "OCR & identifier extraction",
   RECAPTURE: "Recapture forensics",
@@ -27,14 +28,14 @@ export default function Intake() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
 
-  // Clear justUploaded whenever active evidence changes to another item
+  // Clear justUploaded only after session detail has successfully adopted this item as current
   useEffect(() => {
-    if (justUploaded && current && current.evidence_ref !== justUploaded.evidence_ref) {
+    if (justUploaded && current && current.evidence_ref === justUploaded.evidence_ref && current.latest_run?.status !== "running" && current.latest_run?.status !== "queued") {
       setJustUploaded(null);
     }
-  }, [current?.evidence_ref, justUploaded]);
+  }, [current, justUploaded]);
 
-  const watched = current?.evidence_ref ?? justUploaded?.evidence_ref ?? null;
+  const watched = justUploaded?.evidence_ref ?? current?.evidence_ref ?? null;
   const isWatchedPending =
     justUploaded != null ||
     current?.latest_run?.status === "queued" ||
@@ -57,9 +58,6 @@ export default function Intake() {
       (s === "completed" || s === "failed")
     ) {
       refresh();
-      if (s === "completed") {
-        setJustUploaded(null);
-      }
     }
     prevJobStatus.current = s ?? null;
   }, [job.data?.status, refresh]);
@@ -92,9 +90,14 @@ export default function Intake() {
     }
   }, [caseRef, targetMode, createNewCase, refresh, setEvidenceRef]);
 
-  const shown = current ?? justUploaded;
-  const stages = job.data?.stages ?? {};
-  const stageKeys = Object.keys(stages);
+  const shown = justUploaded ?? current;
+  const isTerminal = shown?.latest_run?.status === "completed" || shown?.latest_run?.status === "failed";
+  const stages = isTerminal
+    ? (shown?.latest_run?.stages ?? job.data?.stages ?? {})
+    : (job.data?.stages && Object.keys(job.data.stages).length > 0)
+      ? job.data.stages
+      : (shown?.latest_run?.stages ?? {});
+  const stageKeys = Object.keys(stages).length ? Object.keys(stages) : Object.keys(STAGE_LABEL);
   const done = stageKeys.filter((k) => stages[k] === "completed").length;
   const pct = stageKeys.length ? Math.round((done / stageKeys.length) * 100) : 0;
 
@@ -211,13 +214,13 @@ export default function Intake() {
                 })}
               </ul>
 
-              {job.data?.status === "failed" && (
+              {(job.data?.status === "failed" || shown?.latest_run?.status === "failed") && (
                 <div className="mt-4 rounded-lg border border-danger/35 bg-danger/[0.07] px-3.5 py-2.5 text-[11.5px] text-danger">
-                  Analysis failed: {job.data.error ?? "no error message recorded"}
+                  Analysis failed: {job.data?.error ?? shown?.latest_run?.error ?? "no error message recorded"}
                 </div>
               )}
 
-              {job.data?.status === "completed" && (
+              {(job.data?.status === "completed" || shown?.latest_run?.status === "completed") && (
                 <div className="mt-4 flex flex-wrap items-center gap-2.5">
                   <Chip tone="ok"><FileCheck2 size={11} /> Analysis complete</Chip>
                   <Link to="/analysis" className="btn btn-primary text-[12px]">View forensic analysis</Link>

@@ -586,7 +586,7 @@ export function usePolling<T>(
 
   useEffect(() => {
     let alive = true;
-    if (!path) { setLoading(false); return; }
+    if (!path) { setData(null); setError(null); setLoading(false); return; }
     const stop = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
 
     const run = async () => {

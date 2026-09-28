@@ -26,7 +26,9 @@ from .services import (
     audit, casebuild, neural as neural_svc, audio_forensics as audio_svc,
 )
 
-def _fail(model, row_id: int, exc: Exception) -> None:
+def _fail(model, row_id: int, exc: Exception, stage: str | None = None,
+          case_id: int | None = None, ev_ref: str | None = None,
+          ev_hash: str | None = None) -> None:
     """Record a failure on a FRESH session — the working session may be poisoned."""
     fresh = SessionLocal()
     try:
@@ -35,7 +37,28 @@ def _fail(model, row_id: int, exc: Exception) -> None:
             row.status = "failed"
             row.error = f"{type(exc).__name__}: {exc}"[:600]
             row.finished_at = utcnow()
-            fresh.add(row); fresh.commit()
+            if stage:
+                row.stage = stage
+            st = dict(row.stages_json or {})
+            if stage and stage in st:
+                st[stage] = "failed"
+            row.stages_json = st
+            fresh.add(row)
+            fresh.commit()
+
+            if case_id:
+                try:
+                    audit.record(
+                        fresh,
+                        case_id=case_id,
+                        action=f"Analysis pipeline failed at stage {stage or 'UNKNOWN'}: {type(exc).__name__}",
+                        component="pipeline",
+                        evidence_ref=ev_ref,
+                        evidence_hash=ev_hash,
+                        payload={"stage": stage, "error": str(exc)[:400], "status": "failed"},
+                    )
+                except Exception:
+                    pass
     except Exception:  # noqa: BLE001
         pass
     finally:
@@ -113,7 +136,10 @@ def score_media(path: Path, scratch: Path, media_kind: str,
     # Neural detector (runs only if model is loaded)
     neural_result = None
     if neural_svc.detector_available():
-        neural_result = neural_svc.analyse_frames(paths).to_dict()
+        try:
+            neural_result = neural_svc.analyse_frames(paths).to_dict()
+        except Exception as ne:
+            neural_result = {"model_available": False, "error": str(ne)}
 
     sigs = sig_svc.build_signals(frame_result=frame_result, recompression=recomp,
                                  temporal=temporal, metadata=meta, c2pa=c2pa,
@@ -152,6 +178,9 @@ _pipeline_lock = threading.Lock()
 def run_analysis(evidence_id: int, run_id: int) -> None:
     with _pipeline_lock:
         db: Session = SessionLocal()
+        current_stage = "INIT"
+        ev = None
+        case = None
         try:
             ev = db.get(Evidence, evidence_id)
             run = db.get(AnalysisRun, run_id)
@@ -165,6 +194,7 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
             src = get_evidence_path(ev)
 
             # ── INGEST facts ────────────────────────────────────────────────────
+            current_stage = "INGEST"
             _set_stage(db, run, "INGEST", "running")
             if ev.media_kind == "image":
                 probe = mediainfo.probe_image(src)
@@ -190,11 +220,18 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
             _set_stage(db, run, "INGEST", "completed")
 
             # ── ANALYSIS ────────────────────────────────────────────────────────
+            current_stage = "ANALYSIS"
             _set_stage(db, run, "ANALYSIS", "running")
             result = score_media(src, work / "frames", ev.media_kind, max_frames=8)
             if result.get("error") and result.get("score") is None:
                 run.status = "failed"; run.error = result["error"]
-                _set_stage(db, run, "ANALYSIS", "failed"); db.commit()
+                run.finished_at = utcnow()
+                _set_stage(db, run, "ANALYSIS", "failed")
+                audit.record(db, case_id=case.id,
+                             action=f"Analysis pipeline failed at stage ANALYSIS: {result['error']}",
+                             component="pipeline", evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                             payload={"stage": "ANALYSIS", "error": result["error"], "status": "failed"})
+                db.commit()
                 return
 
             run.detector_backend = sig_svc.get_detector_backend()
@@ -235,6 +272,7 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
             _set_stage(db, run, "ANALYSIS", "completed")
 
             # ── NEURAL (real model inference on sampled frames) ────────────────
+            current_stage = "NEURAL"
             _set_stage(db, run, "NEURAL", "running")
             neural_result = result.get("neural_result")
             if ev.media_kind == "audio":
@@ -271,6 +309,7 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
             _set_stage(db, run, "NEURAL", "completed")
 
             # ── TRACE (corpus matching + ledger) ────────────────────────────────
+            current_stage = "TRACE"
             _set_stage(db, run, "TRACE", "running")
             n_matches = _match_corpus(db, ev, run)
             _record_ledger_and_campaign(db, case, ev, run)
@@ -281,13 +320,14 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
             _set_stage(db, run, "TRACE", "completed")
 
             # ── OCR ─────────────────────────────────────────────────────────────
+            current_stage = "OCR"
             _set_stage(db, run, "OCR", "running")
             if ev.media_kind == "audio":
                 n_ents = 0
                 audit.record(db, case_id=case.id,
-                             action="OCR extraction skipped — not applicable to audio media",
-                             component="ocr (Tesseract)", evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
-                             payload={"status": "NOT_APPLICABLE", "media_kind": "audio"})
+                              action="OCR extraction skipped — not applicable to audio media",
+                              component="ocr (Tesseract)", evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
+                              payload={"status": "NOT_APPLICABLE", "media_kind": "audio"})
             else:
                 try:
                     n_ents = _run_ocr(db, ev, run, result["frame_records"])
@@ -304,11 +344,12 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
             _set_stage(db, run, "OCR", "completed")
 
             # ── RECAPTURE ───────────────────────────────────────────────────────
+            current_stage = "RECAPTURE"
             _set_stage(db, run, "RECAPTURE", "running")
             if ev.media_kind == "audio":
                 rc = {"likelihood": "NOT_APPLICABLE", "score": None, "letterbox": {}, "static": {}, "fft": {},
-                      "ui": {"regions_scanned": [], "recovered_handles": []},
-                      "note": "Screen recapture analysis not applicable to audio media"}
+                       "ui": {"regions_scanned": [], "recovered_handles": []},
+                       "note": "Screen recapture analysis not applicable to audio media"}
             else:
                 rc = rec_svc.analyse([r["path"] for r in result["frame_records"]])
             db.add(RecaptureResult(evidence_id=ev.id, run_id=run.id, likelihood=rc["likelihood"],
@@ -327,6 +368,7 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
             _set_stage(db, run, "RECAPTURE", "completed")
 
             # ── GRAPH + TIMELINE + LEADS ────────────────────────────────────────
+            current_stage = "GRAPH"
             _set_stage(db, run, "GRAPH", "running")
             gstats = casebuild.rebuild_graph(db, case, ev, run)
             casebuild.rebuild_timeline(db, case, ev, run)
@@ -336,6 +378,7 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
                          evidence_hash=ev.sha256, payload=gstats)
             _set_stage(db, run, "GRAPH", "completed")
 
+            current_stage = "LEADS"
             _set_stage(db, run, "LEADS", "running")
             n_leads = casebuild.rebuild_leads(db, case, ev, run)
             _set_stage(db, run, "LEADS", "completed")
@@ -347,7 +390,10 @@ def run_analysis(evidence_id: int, run_id: int) -> None:
                          component="pipeline", evidence_ref=ev.evidence_ref, evidence_hash=ev.sha256,
                          payload={"assessment": run.assessment, "aggregate": run.aggregate_score})
         except Exception as e:  # noqa: BLE001
-            _fail(AnalysisRun, run_id, e)
+            _fail(AnalysisRun, run_id, e, stage=current_stage,
+                  case_id=getattr(case, "id", None) if case else None,
+                  ev_ref=getattr(ev, "evidence_ref", None) if ev else None,
+                  ev_hash=getattr(ev, "sha256", None) if ev else None)
         finally:
             db.close()
 

@@ -137,6 +137,14 @@ def _startup() -> None:
                 component="case manager",
                 payload={"auto_seeded": True},
             )
+
+        # Idempotently ensure restored demo cases (CASE-2026-112, 119, 121) and media exist
+        try:
+            from .services import seed_production
+            seed_production.ensure_demo_cases(db)
+        except Exception as exc:
+            import logging
+            logging.getLogger("srot").error(f"Failed to ensure demo cases: {exc}", exc_info=True)
     finally:
         db.close()
 

@@ -57,6 +57,8 @@ def seed_demo_case():
     init_db()
     db = SessionLocal()
     try:
+        from app.services import seed_production
+        seed_production.ensure_demo_cases(db)
         print(f"· Verifying hero demo case {CASE_REF} …")
         case = db.query(Case).filter(Case.case_ref == CASE_REF).first()
         if not case:
